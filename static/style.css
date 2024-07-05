@@ -1,0 +1,50 @@
+html{
+	background-color: lightblue;
+}
+
+#file_selector{
+	border-radius: 40px;
+	padding: 20px;
+	margin: auto;
+	border-style: solid;
+	background-color: cadetblue;
+	padding: 0 0 20px 0;
+	text-align: center;
+}
+
+table{
+	margin: auto;
+}
+
+#index_table{
+	text-align: center;
+	border-radius: 40px;
+	margin: auto;
+	border-style: solid;
+	background-color: cadetblue;
+	padding: 0 0 20px 0;
+}
+
+#main_header{
+	text-align: center;
+	padding: 0 0 40px 0;
+}
+
+.file_name{
+	padding-bottom: 20px;
+	text-align: left;
+}
+
+.file_link{
+	padding-bottom: 20px;
+	text-align: right;
+}
+
+#front_page_link{
+	text-align: center;
+	font-weight: bold;
+}
+
+#index_table{
+	padding-bottom: 5px;
+}

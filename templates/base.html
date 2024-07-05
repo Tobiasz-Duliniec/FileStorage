@@ -1,0 +1,14 @@
+<!doctype HTML>
+<html lang="en">
+	<head>
+		<title>file storage</title>
+		<link rel="stylesheet" href="style.css">
+	</head>
+		<body>
+			<h1 id="main_header">FileStorage</h1>
+			{% if request.endpoint != "index" %}
+				<p id="front_page_link"><a href="/">Go back to front page</a></p>
+			{% endif %}
+			{% block content %}{% endblock %}
+		</body>
+</html>
