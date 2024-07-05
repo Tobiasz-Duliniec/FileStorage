@@ -1,15 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-	<table class="download_table">
-		<tr>
-			<th>file name</th>
-			<th>download</th>
-		</tr>
-		{% for file in files %}
-		<tr>
-			<td class="file_name">{{file}}</td>
-			<td class="file_link"><a href="download/{{file}}">download</a></td>
-		{% endfor %}
-		</tr>
-</table>
+	<div id="file_selector">
+		<h2>file downloader</h2>
+		{% if number_of_files > 0 %}
+		<table class="download_table">
+			<tr>
+				<th>file name</th>
+				<th>download</th>
+			</tr>
+			{% for file in files %}
+			<tr>
+				<td class="file_name">{{file}}</td>
+				<td class="file_link"><a href="download/{{file}}">download</a></td>
+			{% endfor %}
+			</tr>
+		</table>
+		{% else %}
+		<p>no files to download.</p>
+		{% endif %}
+	</div>
 {% endblock %}
