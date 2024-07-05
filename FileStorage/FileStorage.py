@@ -16,11 +16,11 @@ def send_css():
 def upload_file():
     if(request.method=='POST'):
         file=request.files['file']
-        filename=file.filename
+        filename=utils.secure_filename(file.filename)
         if(filename==''):
             return render_template('file_upload.html', status="You haven't attached any files!",saved=False)
         if(filename not in get_file_list()):
-            file.save('files/'+utils.secure_filename(filename))
+            file.save('files/'+filename)
             return render_template('file_upload.html', status='file has been saved on the server.',saved=True)
         return render_template('file_upload.html', status='cannot save file - file with such name already exists.',saved=False)
     return render_template('file_upload.html')
