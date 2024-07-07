@@ -5,8 +5,8 @@ import os
 app=Flask(__name__)
 
 def get_file_list():
-    pliki=tuple(x for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
-    return pliki
+    files=tuple(x for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
+    return files
 
 @app.route('/style.css')
 def send_css():
@@ -19,10 +19,10 @@ def upload_file():
         filename=utils.secure_filename(file.filename)
         if(filename==''):
             return render_template('file_upload.html', status="You haven't attached any files!",saved=False)
-        if(filename not in get_file_list()):
+        elif(filename not in get_file_list()):
             file.save('files/'+filename)
-            return render_template('file_upload.html', status='file has been saved on the server.',saved=True)
-        return render_template('file_upload.html', status='cannot save file - file with such name already exists.',saved=False)
+            return render_template('file_upload.html', status='File has been saved on the server.',saved=True)
+        return render_template('file_upload.html', status='Cannot save file - file with such name already exists.',saved=False)
     return render_template('file_upload.html')
 
 @app.route('/download/<file>')
@@ -42,4 +42,4 @@ def index():
     return render_template("index.html")
 
 if(__name__=="__main__"):
-    app.run()
+    app.run(host='0.0.0.0',port=25565)
