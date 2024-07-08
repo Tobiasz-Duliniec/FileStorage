@@ -38,7 +38,7 @@ def send_file(file):
 
 @app.route('/download')
 def download():
-    files=get_file_list()
+    files = get_file_list()
     return render_template("file_download.html", files = files, number_of_files = len(files))
 
 @app.route('/')
