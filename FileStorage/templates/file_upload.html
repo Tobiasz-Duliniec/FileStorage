@@ -3,11 +3,11 @@
 	<div id="file_selector">
 		<h2>file uploader</h2>
 		{% if saved is defined %}
-		{% if saved %}
-		<p id="save_success">{{status}}</p>
-		{% else %}
-		<p id="save_fail">{{status}}</p>
-		{% endif %}
+			{% if saved %}
+				<p id="save_success">{{status}}</p>
+			{% else %}
+				<p id="save_fail">{{status}}</p>
+			{% endif %}
 		{% endif %}
 		<form method="post" enctype="multipart/form-data">
 			<label for="file">Choose file:</label>

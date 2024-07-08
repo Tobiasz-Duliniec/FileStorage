@@ -6,12 +6,12 @@
 		<table class="download_table">
 			<tr>
 				<th>file name</th>
-				<th>download</th>
+				<th>file size (bytes)</th>
 			</tr>
 			{% for file in files %}
 			<tr>
-				<td class="file_name">{{file}}</td>
-				<td class="file_link"><a href="download/{{file}}">download</a></td>
+				<td class="file_name"><a href="download/{{file}}">{{file}}</a></td>
+				<td class="file_link">{{files[file]}}</td>
 			</tr>
 			{% endfor %}
 		</table>
