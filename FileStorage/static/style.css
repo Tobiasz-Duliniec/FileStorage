@@ -40,6 +40,15 @@ table{
 	text-align: right;
 }
 
+#save_fail{
+	color: maroon;
+	font-weight: bold;
+}
+
+#save_success{
+	color: navy;
+	font-weight: bold;
+}
 #front_page_link{
 	text-align: center;
 	font-weight: bold;
