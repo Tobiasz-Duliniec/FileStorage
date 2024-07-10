@@ -40,17 +40,26 @@ table{
 	text-align: right;
 }
 
-#save_fail{
+#front_page_link{
+	text-align: center;
+	font-weight: bold;
+}
+
+#fail{
 	color: maroon;
 	font-weight: bold;
 }
 
-#save_success{
+#success{
 	color: navy;
 	font-weight: bold;
 }
 
-#front_page_link{
+#page_not_found{
 	text-align: center;
-	font-weight: bold;
+	border-radius: 40px;
+	margin: auto;
+	border-style: solid;
+	background-color: RosyBrown;
+	padding: 0 0 20px 0;
 }

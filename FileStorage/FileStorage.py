@@ -8,6 +8,10 @@ def get_file_list():
     files = dict((x, os.path.getsize(f'files/{x}')) for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
     return files
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('error404.html'), 404
+
 @app.route('/favicon.ico')
 def send_favicon():
     return send_from_directory('static', 'favicon.ico')

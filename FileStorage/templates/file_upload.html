@@ -4,9 +4,9 @@
 		<h2>file uploader</h2>
 		{% if saved is defined %}
 			{% if saved %}
-				<p id="save_success">{{status}}</p>
+				<p id="success">{{status}}</p>
 			{% else %}
-				<p id="save_fail">{{status}}</p>
+				<p id="fail">{{status}}</p>
 			{% endif %}
 		{% endif %}
 		<form method="post" enctype="multipart/form-data">
