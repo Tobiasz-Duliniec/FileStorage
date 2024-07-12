@@ -26,12 +26,11 @@ def upload_file():
         file = request.files['file']
         filename = utils.secure_filename(file.filename)
         if(filename == ''):
-            return render_template('file_upload.html', status = "You haven't attached any files!", saved = False)
+            return render_template('file_upload.html', status = "Failed to save the file: are you sure you have attached one?", saved = False)
         elif(filename not in get_file_list()):
             file.save('files/' + filename)
             return render_template('file_upload.html', status = 'File has been saved on the server.', saved = True)
-        return render_template('file_upload.html', status = 'Cannot save file - file with such name already exists.', saved = False)
-    return render_template('file_upload.html')
+        return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
 
 @app.route('/download/<file>')
 def send_file(file):
