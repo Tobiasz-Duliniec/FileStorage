@@ -20,7 +20,7 @@ def send_favicon():
 def send_css():
     return send_from_directory('static', 'style.css')
 
-@app.route('/upload', methods=['GET', 'POST'])
+@app.route('/upload', methods = ['GET', 'POST'])
 def upload_file():
     if(request.method == 'POST'):
         file = request.files['file']
