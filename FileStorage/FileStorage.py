@@ -20,6 +20,10 @@ def send_favicon():
 def send_css():
     return send_from_directory('static', 'style.css')
 
+@app.route('/robots.txt')
+def send_robots_txt():
+    return send_from_directory('static', 'robots.txt')
+
 @app.route('/upload', methods = ['GET', 'POST'])
 def upload_file():
     if(request.method == 'POST'):
@@ -31,6 +35,7 @@ def upload_file():
             file.save('files/' + filename)
             return render_template('file_upload.html', status = 'File has been saved on the server.', saved = True)
         return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
+    return render_template('file_upload.html')
 
 @app.route('/download/<file>')
 def send_file(file):
