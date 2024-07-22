@@ -43,6 +43,7 @@ def upload_file():
 
 @app.route('/download/<file>')
 def send_file(file):
+    file=utils.secure_filename(file)
     if(os.path.isfile(f"files/{file}")):
         return send_from_directory('files', file, as_attachment = True)
     else:
