@@ -1,4 +1,4 @@
-html{
+body{
 	background-color: lightblue;
 }
 
@@ -61,5 +61,5 @@ table{
 	margin: auto;
 	border-style: solid;
 	background-color: RosyBrown;
-	padding: 0 0 20px 0;
+	padding: 5px 0 5px 0;
 }
