@@ -3,6 +3,7 @@ from werkzeug import utils
 import os
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
 
 def get_file_list():
     files = dict((x, os.path.getsize(f'files/{x}')) for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
@@ -11,6 +12,10 @@ def get_file_list():
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('error500.html'), 500
+
+@app.errorhandler(413)
+def requested_entity_too_large(e):
+    return render_template('error413.html'), 413
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -27,6 +32,14 @@ def send_css():
 @app.route('/robots.txt')
 def send_robots_txt():
     return send_from_directory('static', 'robots.txt')
+
+@app.route('/login', methods = ['GET', 'POST'])
+def login():
+    ...
+
+@app.route('/register', methods = ['GET', 'POST'])
+def register():
+    ...
 
 @app.route('/upload', methods = ['GET', 'POST'])
 def upload_file():
