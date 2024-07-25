@@ -33,14 +33,6 @@ def send_css():
 def send_robots_txt():
     return send_from_directory('static', 'robots.txt')
 
-@app.route('/login', methods = ['GET', 'POST'])
-def login():
-    ...
-
-@app.route('/register', methods = ['GET', 'POST'])
-def register():
-    ...
-
 @app.route('/upload', methods = ['GET', 'POST'])
 def upload_file():
     if(request.method == 'POST'):
