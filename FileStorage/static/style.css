@@ -63,3 +63,11 @@ table{
 	background-color: RosyBrown;
 	padding: 5px 0 5px 0;
 }
+
+footer{
+	text-align: center;
+	border: solid;
+	margin: 3em 50em 0 50em;
+	background-color: cadetblue;
+	border-radius: 2em;
+}
