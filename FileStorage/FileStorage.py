@@ -14,7 +14,7 @@ def internal_server_error(e):
     return render_template('error500.html'), 500
 
 @app.errorhandler(413)
-def requested_entity_too_large(e):
+def request_entity_too_large(e):
     return render_template('error413.html'), 413
 
 @app.errorhandler(404)
