@@ -1,12 +1,13 @@
 from flask import Flask, render_template, send_from_directory, request, abort
 from werkzeug import utils
 import os
+import sqlite3
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
 
 def get_file_list():
-    files = dict((x, os.path.getsize(f'files/{x}')) for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
+    files = dict((x, os.path.getsize(f'files/{x}') / (1024 * 1024)) for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
     return files
 
 @app.errorhandler(500)
@@ -32,6 +33,22 @@ def send_css():
 @app.route('/robots.txt')
 def send_robots_txt():
     return send_from_directory('static', 'robots.txt')
+
+@app.route('/login', methods = ['GET', 'POST'])
+def login():
+    if(request.method == 'POST'):
+        username = request.form.get('username')
+        password = request.form.get('password')
+        conn = sqlite3.connect('users.db')
+        cur = conn.cursor()
+        results = cur.execute('SELECT username FROM users WHERE username=? AND password=? LIMIT 1', (username, password))
+        username_list = results.fetchall()
+        if(len(username_list) == 0):
+            return render_template('login.html', success = False)
+        username = username_list[0][0]
+        cur.close()
+        conn.close()
+    return render_template('login.html')
 
 @app.route('/upload', methods = ['GET', 'POST'])
 def upload_file():
@@ -65,3 +82,5 @@ def index():
 
 if(__name__=="__main__"):
     app.run()
+
+
