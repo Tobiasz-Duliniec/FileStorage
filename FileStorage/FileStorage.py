@@ -34,22 +34,6 @@ def send_css():
 def send_robots_txt():
     return send_from_directory('static', 'robots.txt')
 
-@app.route('/login', methods = ['GET', 'POST'])
-def login():
-    if(request.method == 'POST'):
-        username = request.form.get('username')
-        password = request.form.get('password')
-        conn = sqlite3.connect('users.db')
-        cur = conn.cursor()
-        results = cur.execute('SELECT username FROM users WHERE username=? AND password=? LIMIT 1', (username, password))
-        username_list = results.fetchall()
-        if(len(username_list) == 0):
-            return render_template('login.html', success = False)
-        username = username_list[0][0]
-        cur.close()
-        conn.close()
-    return render_template('login.html')
-
 @app.route('/upload', methods = ['GET', 'POST'])
 def upload_file():
     if(request.method == 'POST'):
@@ -82,5 +66,3 @@ def index():
 
 if(__name__=="__main__"):
     app.run()
-
-
