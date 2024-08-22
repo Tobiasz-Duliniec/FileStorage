@@ -9,7 +9,9 @@ def convert_bytes_to_megabytes(size:int):
     return round((size / (1024 * 1024)), 3)
 
 def get_file_list():
-    files = dict((x, convert_bytes_to_megabytes(os.path.getsize(f'files/{x}'))) for x in os.listdir('files') if os.path.isfile(f'files/{x}'))
+    files = dict((file, convert_bytes_to_megabytes(os.path.getsize(f'files/{file}')))
+                 for file in os.listdir('files')
+                 if os.path.isfile(f'files/{file}'))
     return files
 
 @app.errorhandler(500)
