@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 	<div id="file_selector">
-		<h2>file uploader</h2>
+		<header>
+			<h2>File uploader</h2>
+		</header>
 		{% if saved is defined %}
 			{% if saved %}
 				<p id="success">{{status}}</p>

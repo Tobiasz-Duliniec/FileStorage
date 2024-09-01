@@ -2,21 +2,32 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="author" content="Tobiasz Duliniec">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>file storage</title>
-		<link rel="icon" type="image/x-icon" href="favicon.ico">
 		<link rel="stylesheet" href="style.css">
+		<link rel="icon" type="image/x-icon" href="{{url_for('send_favicon')}}">
+		<meta name="author" content="Tobiasz Duliniec">
+		<title>file storage</title>
 	</head>
-		<body>
-			<h1 id="main_header">FileStorage</h1>
-			{% if request.endpoint != "index" %}
-				<p id="front_page_link"><a href="/">Go back to front page</a></p>
-			{% endif %}
-			{% block content %}{% endblock %}
-			<footer>
-				<p>Author: Tobiasz Duliniec</p>
-				<p><a href="https://github.com/Tobiasz-Duliniec/FileStorage">Source code on GitHub</a></p>
-			</footer>
-		</body>
+	<body>
+		<header>
+			<h1>FileStorage</h1>
+		</header>
+		<main>
+			<nav>
+				<header>
+					<h2>Links</h2>
+				</header>
+				<a href="/">Main page</a><br>
+				<a href="/download">Download files</a><br>
+				<a href="/upload">Upload files</a><br>
+			</nav>
+			<article>
+				{% block content %}{% endblock %}
+			</article>
+		</main>
+		<footer>
+			<p>Author: Tobiasz Duliniec</p>
+			<p><a href="https://github.com/Tobiasz-Duliniec/FileStorage" target="_blank" rel="noref noopen">Source code on GitHub</a></p>
+		</footer>
+	</body>
 </html>

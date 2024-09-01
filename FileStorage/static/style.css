@@ -2,32 +2,50 @@ body{
 	background-color: lightblue;
 }
 
-#file_selector{
-	border-radius: 40px;
-	padding: 20px;
-	margin: auto;
-	border-style: solid;
-	background-color: cadetblue;
-	padding: 0 0 20px 0;
-	text-align: center;
+a{
+	padding: 1px;
+}
+
+form{
+	padding: 1em;
 }
 
 table{
 	margin: auto;
 }
 
-#index_table{
-	text-align: center;
-	border-radius: 40px;
-	margin: auto;
-	border-style: solid;
-	background-color: cadetblue;
-	padding: 0 0 20px 0;
+main{
+	display: grid;
+	grid-template-columns: 3fr 1fr;
+	grid-template-rows: 1fr;
+	gap: 2em;
 }
 
-#main_header{
+article{
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: 1fr;
+	place-items: center;
+	background-color: cadetblue;
+	border-radius: 1em;
+	border-style: solid;
 	text-align: center;
-	padding: 0 0 40px 0;
+	grid-column-start: 1;
+	grid-row-start: 1;
+}
+
+nav{
+	background-color: cadetblue;
+	border-radius: 1em;
+	border-style: solid;
+	text-align: center;
+	grid-column-start: 2;
+	grid-row-start: 1;
+}
+
+header{
+	text-align: center;
+	padding: 0 0 10px 0;
 }
 
 .file_name{
@@ -38,11 +56,6 @@ table{
 .file_size{
 	padding-bottom: 20px;
 	text-align: right;
-}
-
-#front_page_link{
-	text-align: center;
-	font-weight: bold;
 }
 
 #fail{
@@ -57,11 +70,11 @@ table{
 
 #site_error{
 	text-align: center;
-	border-radius: 40px;
+	border-radius: 20px;
 	margin: auto;
 	border-style: solid;
 	background-color: RosyBrown;
-	padding: 5px 0 5px 0;
+	padding: 1em;
 }
 
 footer{

@@ -1,6 +1,7 @@
 from flask import Flask, render_template, send_from_directory, request, abort
 from werkzeug import utils
 import os
+import flask_login
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
@@ -9,22 +10,27 @@ def convert_bytes_to_megabytes(size:int):
     return round((size / (1024 * 1024)), 3)
 
 def get_file_list():
-    files = dict((file, convert_bytes_to_megabytes(os.path.getsize(f'files/{file}')))
-                 for file in os.listdir('files')
-                 if os.path.isfile(f'files/{file}'))
+    files = dict(
+        (file, convert_bytes_to_megabytes(os.path.getsize(f'files/{file}')))
+        for file in os.listdir('files')
+        if os.path.isfile(f'files/{file}')
+        )
     return files
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    return render_template('error500.html'), 500
+    msg = "Internal Server Error: something went wrong when processing your request."
+    return render_template('error.html', msg = msg), 500
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
-    return render_template('error413.html'), 413
+    msg = "Requested Entity Too Large: you cannnot upload files larger than 1 gigabyte."
+    return render_template('error.html', msg = msg), 413
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('error404.html'), 404
+    msg = "Page Not Found: requested page couldn't be found."
+    return render_template('error.html', msg = msg), 404
 
 @app.route('/favicon.ico')
 def send_favicon():
