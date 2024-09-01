@@ -2,10 +2,6 @@ body{
 	background-color: lightblue;
 }
 
-a{
-	padding: 1px;
-}
-
 form{
 	padding: 1em;
 }
@@ -41,11 +37,18 @@ nav{
 	text-align: center;
 	grid-column-start: 2;
 	grid-row-start: 1;
+	padding: 0.7em;
 }
 
 header{
 	text-align: center;
 	padding: 0 0 10px 0;
+}
+
+input[type="file"]::file-selector-button, input[type="submit"]{
+	padding: 0.4em;
+	background-color: DarkSeaGreen;
+	border-color: black;
 }
 
 .file_name{
