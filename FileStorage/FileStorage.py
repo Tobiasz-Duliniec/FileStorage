@@ -1,7 +1,6 @@
 from flask import Flask, render_template, send_from_directory, request, abort
 from werkzeug import utils
 import os
-import flask_login
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
