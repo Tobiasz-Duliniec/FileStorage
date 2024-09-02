@@ -83,7 +83,7 @@ input[type="file"]::file-selector-button, input[type="submit"]{
 footer{
 	text-align: center;
 	border: solid;
-	margin: 3em 50em 0 50em;
+	margin: 1em 0 0 0;
 	background-color: cadetblue;
 	border-radius: 2em;
 }
