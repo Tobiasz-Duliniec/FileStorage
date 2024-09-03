@@ -3,13 +3,13 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<link rel="stylesheet" href="style.css">
+		<link rel="stylesheet" href="{{url_for('send_css')}}">
 		<link rel="icon" type="image/x-icon" href="{{url_for('send_favicon')}}">
 		<meta name="author" content="Tobiasz Duliniec">
 		<title>file storage</title>
 	</head>
 	<body>
-		<header>
+		<header id="main_header">
 			<h1>FileStorage</h1>
 		</header>
 		<main>
@@ -18,8 +18,8 @@
 					<h2>Links</h2>
 				</header>
 				<a href="/">Main page</a><br>
-				<a href="/download">Download files</a><br>
-				<a href="/upload">Upload files</a><br>
+				<a href="{{url_for('upload_file_page')}}">Download files</a><br>
+				<a href="{{url_for('download_file_page')}}">Upload files</a><br>
 			</nav>
 			<article>
 				{% block content %}{% endblock %}
