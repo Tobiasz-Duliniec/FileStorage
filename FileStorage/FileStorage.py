@@ -44,7 +44,7 @@ def send_robots_txt():
     return send_from_directory('static', 'robots.txt')
 
 @app.route('/upload', methods = ['GET', 'POST'])
-def upload_file():
+def upload_file_page():
     if(request.method == 'POST'):
         file = request.files['file']
         filename = utils.secure_filename(file.filename)
@@ -65,7 +65,7 @@ def send_file(file):
         abort(404)
 
 @app.route('/download')
-def download():
+def download_file_page():
     files = get_file_list()
     return render_template("file_download.html", files = files, number_of_files = len(files))
 
@@ -75,3 +75,4 @@ def index():
 
 if(__name__=="__main__"):
     app.run()
+
