@@ -5,10 +5,11 @@ import os
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
 
-def convert_bytes_to_megabytes(size:int):
-    return round((size / (1024 * 1024)), 3)
+def convert_bytes_to_megabytes(size:int) -> float:
+    size_in_megabytes = round((size / (1024 * 1024)), 3)
+    return size_in_megabytes
 
-def get_file_list():
+def get_file_list() -> dict:
     files = dict(
         (file, convert_bytes_to_megabytes(os.path.getsize(f'files/{file}')))
         for file in os.listdir('files')
