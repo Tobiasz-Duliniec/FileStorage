@@ -10,6 +10,10 @@ header{
 	text-align: center;
 }
 
+nav a{
+	display: block;
+}
+
 #main_header{
 	grid-column-start: 1;
 	grid-column-end: 1;
