@@ -17,9 +17,9 @@
 				<header>
 					<h2>Links</h2>
 				</header>
-				<span><a href="/">Main page</a></span>
-				<span><a href="{{url_for('download_file_page')}}">Download files</a></span>
-				<span><a href="{{url_for('upload_file_page')}}">Upload files</a></span>
+				<span>{% if request.path == "/" %}<strong>Main page</strong>{% else %}<a href="/">Main page</a>{% endif %}</span>
+				<span>{% if request.path == url_for('download_file_page') %}<strong>Download files</strong>{% else %}<a href="{{url_for('download_file_page')}}">Download files</a>{% endif %}</span>
+				<span>{% if request.path == url_for('upload_file_page') %}<strong>Upload files</strong>{% else %}<a href="{{url_for('upload_file_page')}}">Upload files</a>{% endif %}</span>
 			</nav>
 			<article>
 				{% block content %}{% endblock %}
