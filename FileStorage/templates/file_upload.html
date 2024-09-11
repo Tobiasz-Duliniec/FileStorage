@@ -6,9 +6,13 @@
 		</header>
 		{% if saved is defined %}
 			{% if saved %}
+			<div id="site_success">
 				<p id="success">{{status}}</p>
+			</div>
 			{% else %}
+			<div id="site_error">
 				<p id="fail">{{status}}</p>
+			</div>
 			{% endif %}
 		{% endif %}
 		<form method="post" enctype="multipart/form-data">
