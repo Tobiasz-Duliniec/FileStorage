@@ -3,7 +3,8 @@ from werkzeug import utils
 import os
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
+app.config['MAX_FILE_SIZE_GB'] = 1
+app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
 
 def convert_bytes_to_megabytes(size:int) -> float:
     size_in_megabytes = round((size / (1024 * 1024)), 3)
@@ -24,8 +25,8 @@ def internal_server_error(e):
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
-    msg = "Requested Entity Too Large: you cannnot upload files larger than 1 gigabyte."
-    return render_template('error.html', msg = msg), 413
+    msg = f"Requested Entity Too Large: you cannot upload files larger than {app.config['MAX_FILE_SIZE_GB']} gigabyte(s)."
+    return render_template('file_upload.html', status = msg, saved = False), 413
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -50,7 +51,7 @@ def upload_file_page():
         file = request.files['file']
         filename = utils.secure_filename(file.filename)
         if(filename == ''):
-            return render_template('file_upload.html', status = "Failed to save the file: are you sure you have attached one?", saved = False)
+            return render_template('file_upload.html', status = 'Failed to save the file: are you sure you have attached one?', saved = False)
         elif(filename not in get_file_list()):
             file.save('files/' + filename)
             return render_template('file_upload.html', status = 'File has been saved on the server.', saved = True)
