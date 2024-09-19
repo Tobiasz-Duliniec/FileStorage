@@ -3,5 +3,10 @@
 	<header>
 		<h2>Welcome!</h2>
 	</header>
-	<p id="text">Welcome to FileStorage. Please use the links in the navbar to navigate the site.</p>
+	<p>Welcome to FileStorage. Please log in to download and upload files</p>
+	{% if session['username'] %}
+	<p>You are currently logged in as {{ session['username'] }}</p>
+	{% else %}
+	<p>You aren't currently logged in</p>
+	{% endif %}
 {% endblock %}
