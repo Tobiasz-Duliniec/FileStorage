@@ -105,6 +105,16 @@ form{
 	padding: 1em;
 }
 
+#login_form{
+	display: grid;
+	place-items: center;
+}
+
+#login_form *{
+	margin: 0.1em;
+}
+
+
 table{
 	margin: auto;
 }

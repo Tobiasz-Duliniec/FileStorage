@@ -1,15 +1,43 @@
 from flask import Flask, render_template, send_from_directory, request, abort, session, redirect
 from werkzeug import utils
+import bcrypt
+import json
 import os
 import sqlite3
 
 app = Flask(__name__)
-app.config['MAX_FILE_SIZE_GB'] = 1
-app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
 
-app.secret_key = 'secret_key'
-# remember to change the secret key to something more secure
-# when putting the site to production
+def create_users_database():
+    '''
+    The users database will contain only admin account with the password and username "admin".
+    It is recommended that the password is changed before putting the site to production.
+    '''
+    conn = sqlite3.connect('users.db')
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY,
+                                                                username TEXT,
+                                                                password BLOB,
+                                                                permissions INTEGER)''')
+    password = bcrypt.hashpw(bytes('admin'.encode('utf-8')), app.config['GENSALT'])
+    cur.execute('INSERT INTO users (username, password, permissions) VALUES ("admin", ?, 1)', (password,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def check_databases():
+    '''
+    If there are no required database files, the function creates them.
+    '''
+    if(not os.path.isfile('users.db')):
+        create_users_database()
+
+def set_configs():
+    app.config.from_file('config.json', load = json.load)
+    app.config['GENSALT'] = bytes(app.config['GENSALT'].encode('utf-8'))
+    app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
+    app.secret_key = 'secret_key'
+    # remember to change the secret key to something more secure
+    # when putting the site to production
 
 def convert_bytes_to_megabytes(size:int) -> float:
     size_in_megabytes = round((size / (1024 * 1024)), 3)
@@ -95,6 +123,7 @@ def login():
     if(request.method == 'POST'):
         username = request.form.get('username')
         password = request.form.get('password')
+        password = bcrypt.hashpw(bytes(username.encode('utf-8')), app.config['GENSALT'])
         conn = sqlite3.connect('users.db')
         cur = conn.cursor()
         results = cur.execute('SELECT username FROM users WHERE username=? AND password=? LIMIT 1', (username, password))
@@ -117,5 +146,10 @@ def logout():
 def index():
     return render_template('index.html')
 
-if(__name__ == '__main__'):
+def start_website():
+    set_configs()
+    check_databases()
     app.run()
+
+if(__name__ == "__main__"):
+    start_website()
