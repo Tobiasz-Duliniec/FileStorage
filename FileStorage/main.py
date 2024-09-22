@@ -14,7 +14,7 @@ def create_users_database():
     '''
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY,
+    cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
                                                                 username TEXT,
                                                                 password BLOB,
                                                                 permissions INTEGER)''')
@@ -32,6 +32,13 @@ def check_databases():
         create_users_database()
 
 def set_configs():
+    '''
+    Loads data from config files.
+    It is recommended that you change default values
+    that contain sensitive data (gensalt, secret key)
+    before putting the site to production
+    since they are publicly available in the GitHub repo.
+    '''
     app.config.from_file('config.json', load = json.load)
     app.config['GENSALT'] = bytes(app.config['GENSALT'].encode('utf-8'))
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
