@@ -1,4 +1,5 @@
 {
+	"GENSALT": "$2b$12$Gj01na.MIg9anQejiZEL/u",
 	"MAX_FILE_SIZE_GB": 1,
-	"GENSALT": "$2b$12$Gj01na.MIg9anQejiZEL/u"
+	"SECRET_KEY": "secret_key"
 }
