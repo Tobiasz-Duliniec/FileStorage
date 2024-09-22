@@ -35,9 +35,6 @@ def set_configs():
     app.config.from_file('config.json', load = json.load)
     app.config['GENSALT'] = bytes(app.config['GENSALT'].encode('utf-8'))
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
-    app.secret_key = 'secret_key'
-    # remember to change the secret key to something more secure
-    # when putting the site to production
 
 def convert_bytes_to_megabytes(size:int) -> float:
     size_in_megabytes = round((size / (1024 * 1024)), 3)
