@@ -71,10 +71,10 @@ def convert_bytes_to_megabytes(size:int) -> float:
 def get_file_list(username:str) -> dict:
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    uuid = cur.execute('SELECT UUID FROM users WHERE username=?', (username, )).fetchall()[0][0]
+    userUUID = cur.execute('SELECT UUID FROM users WHERE username=?', (username, )).fetchall()[0][0]
     file_list = cur.execute('SELECT publicFilename, internalFilename FROM files INNER JOIN users ON files.userID=users.userID WHERE username=?', (username, )).fetchall()
     file_list = dict(
-        (file[0], convert_bytes_to_megabytes(os.path.getsize(f'files/{uuid}/{file[1]}')))
+        (file[0], convert_bytes_to_megabytes(os.path.getsize(f'files/{userUUID}/{file[1]}')))
                  for file in file_list)
     cur.close()
     conn.close()
@@ -151,7 +151,7 @@ def send_file(file):
     username = session.get('username')
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    internalFilename, UUID = cur.execute('''SELECT internalfilename, UUID
+    internalFilename, userUUID = cur.execute('''SELECT internalfilename, UUID
                                                     FROM users
                                                     INNER JOIN files
                                                     ON users.userID=files.userID
@@ -160,8 +160,8 @@ def send_file(file):
                                             (file, username)).fetchall()[0]
     cur.close()
     conn.close()
-    if(os.path.isfile(f"files/{UUID}/{internalFilename}")):
-        return send_from_directory(f'files/{UUID}', internalFilename, download_name = file, as_attachment = True)
+    if(os.path.isfile(f"files/{userUUID}/{internalFilename}")):
+        return send_from_directory(f'files/{userUUID}', internalFilename, download_name = file, as_attachment = True)
     else:
         abort(404)
 
