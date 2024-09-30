@@ -71,7 +71,7 @@ def convert_bytes_to_megabytes(size:int) -> float:
 def get_file_list(username:str) -> dict:
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    uuid = cur.execute('SELECT UUID from users where username=?', (username, )).fetchall()[0][0]
+    uuid = cur.execute('SELECT UUID FROM users WHERE username=?', (username, )).fetchall()[0][0]
     file_list = cur.execute('SELECT publicFilename, internalFilename FROM files INNER JOIN users on files.userID=users.userID WHERE username=?', (username, )).fetchall()
     file_list = dict(
         (file[0], convert_bytes_to_megabytes(os.path.getsize(f'files/{uuid}/{file[1]}')))
@@ -152,12 +152,12 @@ def send_file(file):
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
     internalFilename, UUID = cur.execute('''
-                                                    select internalfilename, UUID
-                                                    from users
-                                                    inner join files
-                                                    on users.userID=files.userID
-                                                    where publicFilename=?
-                                                    and username=?
+                                                    SELECT internalfilename, UUID
+                                                    FROM users
+                                                    INNER JOIN files
+                                                    ON users.userID=files.userID
+                                                    WHERE publicFilename=?
+                                                    AND username=?
                                                     ''', (file, username)).fetchall()[0]
     cur.close()
     conn.close()
