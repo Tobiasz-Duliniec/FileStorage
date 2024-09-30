@@ -1,9 +1,9 @@
 from flask import Flask, render_template, send_from_directory, request, abort, session, redirect
-from werkzeug import utils
 import bcrypt
 import json
 import os
 import sqlite3
+import uuid
 
 app = Flask(__name__)
 
@@ -16,16 +16,25 @@ def create_users_database():
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
     cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                                username TEXT NOT NULL UNIQUE CHECK(username NOT LIKE "../%"),
+                                                                username TEXT NOT NULL UNIQUE,
                                                                 password BLOB NOT NULL,
-                                                                permissions INTEGER NOT NULL DEFAULT 0)''')
+                                                                UUID TEXT NOT NULL UNIQUE,
+                                                                permissions INTEGER NOT NULL DEFAULT 0);
+                        ''')
     password = bcrypt.hashpw('admin'.encode('utf-8'), app.config['GENSALT'])
-    cur.execute('INSERT INTO users (username, password, permissions) VALUES ("admin", ?, 1)', (password, ))
+    admin_uuid = str(uuid.uuid4())
+    cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_uuid))
+    cur.execute('''CREATE TABLE files (fileID INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            publicFilename TEXT NOT NULL,
+                                                            internalFilename TEXT NOT NULL UNIQUE,
+                                                            userID INTEGER NOT NULL,
+                                                            FOREIGN KEY(userID) REFERENCES users(USERID));
+                        ''')
     conn.commit()
     cur.close()
     conn.close()
-    if(not os.path.isdir('files/admin')):
-        os.makedirs('files/admin')
+    if(not os.path.isdir(f'files/{admin_uuid}')):
+        os.makedirs(f'files/{admin_uuid}')
 
 def check_databases():
     if(not os.path.isfile('users.db')):
@@ -51,7 +60,7 @@ def set_configs():
             'MAX_FILE_SIZE_GB': app.config['MAX_FILE_SIZE_GB'],
             'SECRET_KEY': app.config['SECRET_KEY'].decode()
             }
-        with open('config.json', 'w') as file:
+        with open('config.json', 'wt') as file:
             json.dump(config_data, file, indent = 1)
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
 
@@ -60,12 +69,16 @@ def convert_bytes_to_megabytes(size:int) -> float:
     return size_in_megabytes
 
 def get_file_list(username:str) -> dict:
-    files = dict(
-        (file, convert_bytes_to_megabytes(os.path.getsize(f'files/{username}/{file}')))
-        for file in os.listdir(f'files/{username}')
-        if os.path.isfile(f'files/{username}/{file}')
-        )
-    return files
+    conn = sqlite3.connect('users.db')
+    cur = conn.cursor()
+    uuid = cur.execute('SELECT UUID from users where username=?', (username, )).fetchall()[0][0]
+    file_list = cur.execute('SELECT publicFilename, internalFilename FROM files INNER JOIN users on files.userID=users.userID WHERE username=?', (username, )).fetchall()
+    file_list = dict(
+        (file[0], convert_bytes_to_megabytes(os.path.getsize(f'files/{uuid}/{file[1]}')))
+                 for file in file_list)
+    cur.close()
+    conn.close()
+    return file_list
 
 @app.errorhandler(500)
 def internal_server_error(e):
@@ -107,13 +120,28 @@ def upload_file_page():
     if(request.method == 'POST'):
         username = session.get('username')
         file = request.files['file']
-        filename = utils.secure_filename(file.filename)
+        filename = file.filename
         if(filename == ''):
-            return render_template('file_upload.html', status = 'Failed to save the file: are you sure you have attached one?', saved = False)
-        elif(filename not in get_file_list(username)):
-            file.save(f'files/{username}/{filename}')
-            return render_template('file_upload.html', status = 'File has been saved on the server.', saved = True)
-        return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
+            return render_template('file_upload.html', status = 'Failed to save the file: no file found.', saved = False)
+        conn = sqlite3.connect('users.db')
+        cur = conn.cursor()
+        noOfFiles = cur.execute('''SELECT COUNT(*)
+                                            FROM files INNER JOIN users ON users.userID=files.userID
+                                            WHERE publicFilename=? AND username=?''',
+                                            (filename, username)).fetchall()[0][0]
+        if(noOfFiles > 0):
+            conn.commit()
+            cur.close()
+            return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
+        results = cur.execute('SELECT userID, UUID FROM users WHERE username=? LIMIT 1', (username, ))
+        uploader_id, uploader_UUID = results.fetchall()[0]
+        internal_name = str(uuid.uuid4())
+        file.save(f'files/{uploader_UUID}/{internal_name}')
+        cur.execute('INSERT INTO files (publicFilename, internalFilename, userID) VALUES (?, ?, ?)', (filename, internal_name, uploader_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return render_template('file_upload.html', status = 'File has been saved on the server.', saved = True)
     return render_template('file_upload.html')
 
 @app.route('/download/<file>')
@@ -121,9 +149,20 @@ def send_file(file):
     if(not session.get('username')):
         return redirect('/login')
     username = session.get('username')
-    file = utils.secure_filename(file)
-    if(os.path.isfile(f"files/{username}/{file}")):
-        return send_from_directory('files', file, as_attachment = True)
+    conn = sqlite3.connect('users.db')
+    cur = conn.cursor()
+    internalFilename, UUID = cur.execute('''
+                                                    select internalfilename, UUID
+                                                    from users
+                                                    inner join files
+                                                    on users.userID=files.userID
+                                                    where publicFilename=?
+                                                    and username=?
+                                                    ''', (file, username)).fetchall()[0]
+    cur.close()
+    conn.close()
+    if(os.path.isfile(f"files/{UUID}/{internalFilename}")):
+        return send_from_directory(f'files/{UUID}', internalFilename, download_name=file, as_attachment = True)
     else:
         abort(404)
 
