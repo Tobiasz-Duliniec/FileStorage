@@ -151,18 +151,17 @@ def send_file(file):
     username = session.get('username')
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    internalFilename, UUID = cur.execute('''
-                                                    SELECT internalfilename, UUID
+    internalFilename, UUID = cur.execute('''SELECT internalfilename, UUID
                                                     FROM users
                                                     INNER JOIN files
                                                     ON users.userID=files.userID
                                                     WHERE publicFilename=?
-                                                    AND username=?
-                                                    ''', (file, username)).fetchall()[0]
+                                                    AND username=?''',
+                                            (file, username)).fetchall()[0]
     cur.close()
     conn.close()
     if(os.path.isfile(f"files/{UUID}/{internalFilename}")):
-        return send_from_directory(f'files/{UUID}', internalFilename, download_name=file, as_attachment = True)
+        return send_from_directory(f'files/{UUID}', internalFilename, download_name = file, as_attachment = True)
     else:
         abort(404)
 
