@@ -7,7 +7,7 @@ import uuid
 
 app = Flask(__name__)
 
-app.config['BANNED_CHARACTERS'] = ('<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*')
+app.config['BANNED_CHARACTERS'] = ('<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#')
 
 
 def is_filename_legal(filename:str) -> bool:
