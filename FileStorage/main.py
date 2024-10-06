@@ -8,6 +8,8 @@ import uuid
 app = Flask(__name__)
 
 app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 
 def is_filename_legal(filename:str) -> bool:
@@ -33,8 +35,8 @@ def create_users_database():
                                                                 permissions INTEGER NOT NULL DEFAULT 0);
                         ''')
     password = bcrypt.hashpw('admin'.encode('utf-8'), app.config['GENSALT'])
-    admin_uuid = str(uuid.uuid4())
-    cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_uuid))
+    admin_UUID = str(uuid.uuid4())
+    cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_UUID))
     cur.execute('''CREATE TABLE files (fileID INTEGER PRIMARY KEY AUTOINCREMENT,
                                                             publicFilename TEXT NOT NULL,
                                                             internalFilename TEXT NOT NULL UNIQUE,
@@ -44,8 +46,9 @@ def create_users_database():
     conn.commit()
     cur.close()
     conn.close()
-    if(not os.path.isdir(f'files/{admin_uuid}')):
-        os.makedirs(f'files/{admin_uuid}')
+    admin_file_folder = os.path.join('files', admin_UUID)
+    if(not os.path.isdir(admin_file_folder)):
+        os.makedirs(admin_file_folder)
 
 def check_databases():
     if(not os.path.isfile('users.db')):
@@ -68,10 +71,12 @@ def set_configs():
         app.config['MAX_FILENAME_LENGTH'] = 32
         app.config['GENSALT'] = bcrypt.gensalt()
         app.config['SECRET_KEY'] = bcrypt.gensalt()
+        app.config['PERMANENT_SESSION_LIFETIME'] = 10800
         config_data = {
             'GENSALT': app.config['GENSALT'].decode(),
             'MAX_FILE_SIZE_GB': app.config['MAX_FILE_SIZE_GB'],
             'MAX_FILENAME_LENGTH': app.config['MAX_FILENAME_LENGTH'],
+            'PERMANENT_SESSION_LIFETIME': app.config['PERMANENT_SESSION_LIFETIME'],
             'SECRET_KEY': app.config['SECRET_KEY'].decode()
             }
         with open('config.json', 'wt') as file:
@@ -85,10 +90,10 @@ def convert_bytes_to_megabytes(size:int) -> float:
 def get_file_list(username:str) -> dict:
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    userUUID = cur.execute('SELECT UUID FROM users WHERE username=?', (username, )).fetchall()[0][0]
+    user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?', (username, )).fetchall()[0][0]
     file_list = cur.execute('SELECT publicFilename, internalFilename FROM files INNER JOIN users ON files.userID=users.userID WHERE username=?', (username, )).fetchall()
     file_list = dict(
-        (file[0], convert_bytes_to_megabytes(os.path.getsize(f'files/{userUUID}/{file[1]}')))
+        (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
                  for file in file_list)
     cur.close()
     conn.close()
@@ -136,23 +141,23 @@ def upload_file_page():
         file = request.files['file']
         filename = file.filename
         if(not is_filename_legal(filename)):
-            return render_template('file_upload.html', status = 'Invalid filename: namefile contains illegal characters or is too long.', saved = False)
+            return render_template('file_upload.html', status = 'Invalid filename: filename contains illegal characters or is too long.', saved = False)
         if(filename == ''):
             return render_template('file_upload.html', status = 'Failed to save the file: no file found.', saved = False)
         conn = sqlite3.connect('users.db')
         cur = conn.cursor()
-        noOfFiles = cur.execute('''SELECT COUNT(*)
+        no_of_files = cur.execute('''SELECT COUNT(*)
                                             FROM files INNER JOIN users ON users.userID=files.userID
                                             WHERE publicFilename=? AND username=?''',
                                             (filename, username)).fetchall()[0][0]
-        if(noOfFiles > 0):
+        if(no_of_files > 0):
             conn.commit()
             cur.close()
             return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
         results = cur.execute('SELECT userID, UUID FROM users WHERE username=? LIMIT 1', (username, ))
         uploader_id, uploader_UUID = results.fetchall()[0]
         internal_name = str(uuid.uuid4())
-        file.save(f'files/{uploader_UUID}/{internal_name}')
+        file.save(os.path.join('files', uploader_UUID, internal_name))
         cur.execute('INSERT INTO files (publicFilename, internalFilename, userID) VALUES (?, ?, ?)', (filename, internal_name, uploader_id))
         conn.commit()
         cur.close()
@@ -167,7 +172,7 @@ def send_file(file):
     username = session.get('username')
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
-    internalFilename, userUUID = cur.execute('''SELECT internalfilename, UUID
+    internal_filename, user_UUID = cur.execute('''SELECT internalfilename, UUID
                                                     FROM users
                                                     INNER JOIN files
                                                     ON users.userID=files.userID
@@ -176,8 +181,8 @@ def send_file(file):
                                             (file, username)).fetchall()[0]
     cur.close()
     conn.close()
-    if(os.path.isfile(f"files/{userUUID}/{internalFilename}")):
-        return send_from_directory(f'files/{userUUID}', internalFilename, download_name = file, as_attachment = True)
+    if(os.path.isfile(os.path.join('files', user_UUID, internal_filename))):
+        return send_from_directory(os.path.join('files', user_UUID), internal_filename, download_name = file, as_attachment = True)
     else:
         abort(404)
 
@@ -206,6 +211,7 @@ def login():
         username = username_list[0][0]
         cur.close()
         conn.close()
+        session.permanent = True
         session['username'] = username
         return redirect('/')
     return render_template('login.html')
