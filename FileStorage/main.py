@@ -7,7 +7,7 @@ import uuid
 
 app = Flask(__name__)
 
-app.config['BANNED_CHARACTERS'] = ('<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#')
+app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
 
 
 def is_filename_legal(filename:str) -> bool:
@@ -65,8 +65,8 @@ def set_configs() -> None:
         app.config['GENSALT'] = bcrypt.gensalt()
         app.config['MAX_FILE_SIZE_GB'] = 1
         app.config['MAX_FILENAME_LENGTH'] = 32
-        app.config['SECRET_KEY'] = bcrypt.gensalt()
         app.config['PERMANENT_SESSION_LIFETIME'] = 10800
+        app.config['SECRET_KEY'] = bcrypt.gensalt()
         app.config['SESSION_COOKIE_HTTPONLY'] = True
         app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
         config_data = {
