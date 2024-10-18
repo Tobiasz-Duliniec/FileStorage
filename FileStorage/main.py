@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_from_directory, request, abort, session, redirect
+from flask import Flask, abort, redirect, render_template, request, send_from_directory, session
 import bcrypt
 import json
 import os
@@ -39,7 +39,7 @@ def create_users_database() -> None:
                                                             publicFilename TEXT NOT NULL,
                                                             internalFilename TEXT NOT NULL UNIQUE,
                                                             userID INTEGER NOT NULL,
-                                                            FOREIGN KEY(userID) REFERENCES users(USERID));
+                                                            FOREIGN KEY(userID) REFERENCES users(userID));
                         ''')
     conn.commit()
     cur.close()
@@ -64,6 +64,7 @@ def set_configs() -> None:
     else:
         app.config['GENSALT'] = bcrypt.gensalt()
         app.config['MAX_FILE_SIZE_GB'] = 1
+        app.config['MAX_FILES_PER_PAGE'] = 30
         app.config['MAX_FILENAME_LENGTH'] = 32
         app.config['PERMANENT_SESSION_LIFETIME'] = 10800
         app.config['SECRET_KEY'] = bcrypt.gensalt()
@@ -72,6 +73,7 @@ def set_configs() -> None:
         config_data = {
             'GENSALT': app.config['GENSALT'].decode(),
             'MAX_FILE_SIZE_GB': app.config['MAX_FILE_SIZE_GB'],
+            'MAX_FILES_PER_PAGE': app.config['MAX_FILES_PER_PAGE'],
             'MAX_FILENAME_LENGTH': app.config['MAX_FILENAME_LENGTH'],
             'PERMANENT_SESSION_LIFETIME': app.config['PERMANENT_SESSION_LIFETIME'],
             'SECRET_KEY': app.config['SECRET_KEY'].decode(),
@@ -141,10 +143,10 @@ def upload_file_page():
         username = session.get('username')
         file = request.files['file']
         filename = file.filename
-        if(not is_filename_legal(filename)):
-            return render_template('file_upload.html', status = 'Invalid filename: filename contains illegal characters or is too long.', saved = False)
         if(filename == ''):
             return render_template('file_upload.html', status = 'Failed to save the file: no file found.', saved = False)
+        if(not is_filename_legal(filename)):
+            return render_template('file_upload.html', status = 'Invalid filename: filename contains illegal characters or is too long.', saved = False)
         conn = sqlite3.connect('users.db')
         cur = conn.cursor()
         no_of_files = cur.execute('''SELECT COUNT(*)
@@ -155,8 +157,10 @@ def upload_file_page():
             conn.commit()
             cur.close()
             return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
-        results = cur.execute('SELECT userID, UUID FROM users WHERE username=? LIMIT 1;', (username, ))
-        uploader_id, uploader_UUID = results.fetchone()
+        uploader_id, uploader_UUID = cur.execute('''SELECT userID, UUID
+                                                                            FROM users
+                                                                            WHERE username=?;''',
+                                                        (username, )).fetchone()
         internal_name = str(uuid.uuid4())
         file.save(os.path.join('files', uploader_UUID, internal_name))
         cur.execute('INSERT INTO files (publicFilename, internalFilename, userID) VALUES (?, ?, ?);', (filename, internal_name, uploader_id))
