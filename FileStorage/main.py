@@ -88,13 +88,17 @@ def convert_bytes_to_megabytes(size:int) -> float:
     size_in_megabytes = round((size / (1024 * 1024)), 3)
     return size_in_megabytes
 
-def get_file_list(username:str) -> dict:
+def get_file_list(username:str, file_start:int) -> dict:
     conn = sqlite3.connect('users.db')
     cur = conn.cursor()
     user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
     file_list = cur.execute('''SELECT publicFilename, internalFilename
                                         FROM files INNER JOIN users ON files.userID=users.userID
-                                        WHERE username=?;''', (username, )).fetchall()
+                                        WHERE username=? LIMIT ? OFFSET ?;''',
+                            (username,
+                             app.config['MAX_FILES_PER_PAGE'],
+                            file_start)
+                            ).fetchall()
     file_list = dict(
         (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
                  for file in file_list)
@@ -196,8 +200,22 @@ def download_file_page():
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    files = get_file_list(username)
-    return render_template("file_download.html", files = files, number_of_files = len(files))
+    with sqlite3.connect('users.db') as conn:
+        number_of_all_files = conn.execute('''SELECT count(*)
+                                                    FROM files
+                                                    INNER JOIN users ON files.userID=users.userID
+                                                    WHERE username=?''', (username, )).fetchone()[0]
+    if(request.args.get('start') is not None):
+        try:
+            file_start = int(request.args.get('start'))
+            if(file_start < 0):
+                return redirect(request.base_url+'?start=0')
+        except ValueError:
+            file_start = 0
+    else:
+        file_start = 0
+    files = get_file_list(username, file_start)
+    return render_template("file_download.html", files = files, number_of_files = len(files), number_of_all_files = number_of_all_files)
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
