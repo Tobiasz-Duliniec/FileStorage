@@ -1,4 +1,4 @@
-from flask import Flask, abort, redirect, render_template, request, send_from_directory, session
+from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, session
 import bcrypt
 import json
 import os
@@ -9,6 +9,22 @@ app = Flask(__name__)
 
 app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
 
+
+def is_admin(username):
+    if(username is None):
+        return False
+    with sqlite3.connect('users.db') as conn:
+        cur = conn.cursor()
+        permissions = cur.execute('''SELECT permissions
+                            FROM users
+                            WHERE username=?;''',
+                            (username, )).fetchone()[0]
+        cur.close()
+    return True if permissions == 1 else False
+
+@app.context_processor
+def is_admin_jinja():
+    return {'is_admin': is_admin(session.get('username'))}
 
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
@@ -148,9 +164,11 @@ def upload_file_page():
         file = request.files['file']
         filename = file.filename
         if(filename == ''):
-            return render_template('file_upload.html', status = 'Failed to save the file: no file found.', saved = False)
+            flash('Failed to save the file: no file found.', 'error')
+            return render_template('file_upload.html')
         if(not is_filename_legal(filename)):
-            return render_template('file_upload.html', status = 'Invalid filename: filename contains illegal characters or is too long.', saved = False)
+            flash('Invalid filename: filename contains illegal characters or is too long.', 'error')
+            return render_template('file_upload.html')
         conn = sqlite3.connect('users.db')
         cur = conn.cursor()
         no_of_files = cur.execute('''SELECT COUNT(*)
@@ -160,7 +178,8 @@ def upload_file_page():
         if(no_of_files > 0):
             conn.commit()
             cur.close()
-            return render_template('file_upload.html', status = "Couldn't save the file: file with such name already exists.", saved = False)
+            flash("Couldn't save the file: file with such name already exists", 'error')
+            return render_template('file_upload.html')
         uploader_id, uploader_UUID = cur.execute('''SELECT userID, UUID
                                                                             FROM users
                                                                             WHERE username=?;''',
@@ -171,7 +190,8 @@ def upload_file_page():
         conn.commit()
         cur.close()
         conn.close()
-        return render_template('file_upload.html', status = 'File has been saved on the server.', saved = True)
+        flash('File has been saved on the server.', 'success')
+        return render_template('file_upload.html')
     return render_template('file_upload.html')
 
 @app.route('/download/<file>')
@@ -209,7 +229,7 @@ def download_file_page():
         try:
             file_start = int(request.args.get('start'))
             if(file_start < 0):
-                return redirect(request.base_url+'?start=0')
+                file_start = 0
         except ValueError:
             file_start = 0
     else:
@@ -240,6 +260,44 @@ def login():
         session['username'] = username
         return redirect('/')
     return render_template('login.html')
+
+@app.route('/admin', methods = ['GET', 'POST'])
+def admin():
+    if(not is_admin(session.get('username'))):
+        abort(404)
+    if(request.method == 'POST'):
+        if(request.form['action'] == 'config'):
+            new_config_data = dict(request.form)
+            new_config_data.pop('action', None)
+            new_config_data['SESSION_COOKIE_HTTPONLY'] = bool(new_config_data['SESSION_COOKIE_HTTPONLY'])
+            for x in ('MAX_FILE_SIZE_GB', 'MAX_FILES_PER_PAGE', 'MAX_FILENAME_LENGTH', 'PERMANENT_SESSION_LIFETIME'):
+                try:
+                    new_config_data[x] = int(new_config_data[x])
+                except ValueError:
+                    flash(f'Error: invalid data type in the following field: {x}', 'error')
+                    break
+            else:
+                app.config.from_mapping(new_config_data)
+                with open('config.json', 'wt', encoding = 'utf-8') as config_file:
+                    json.dump(new_config_data, config_file, indent = 1)
+            flash('config settings have been updated.', 'success')
+        elif(request.form['action'] == 'register'):
+            username = request.form.get('username')
+            password = request.form.get('password', 'password')
+            password = bcrypt.hashpw(password.encode('utf-8'), app.config['GENSALT'])
+            user_UUID = str(uuid.uuid4())
+            permissions = request.form.get('permissions', '0')
+            with sqlite3.connect('users.db') as conn:
+                cur = conn.cursor()
+                try:
+                    cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password, user_UUID, permissions))
+                    flash('New account created.', 'success')
+                except sqlite3.IntegrityError as e:
+                    flash(f'Accouount creation failed: {e}', 'error')
+                cur.close()
+    with open('config.json', 'rt', encoding = 'utf-8') as config_file:
+        config_data = json.load(config_file)
+    return render_template('admin.html', config_data = config_data)
 
 @app.route('/logout')
 def logout():

@@ -73,7 +73,7 @@ input[type="file"]::file-selector-button, input[type="submit"]{
 	text-align: right;
 }
 
-#fail{
+#error{
 	color: maroon;
 	font-weight: bold;
 }
