@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+	<header>
+		<h2>Welcome!</h2>
+	</header>
+	{% if session['username'] %}
+		<p>Welcome to FileStorage. Please use the navbar to navigate the site.</p>
+	{% else %}
+		<p>Welcome to FileStorage. Please log in to download and upload files.</p>
+	{% endif %}
+	{% if session['username'] %}
+		<p>You are currently logged in as {{ session['username'] }}.</p>
+	{% else %}
+		<p>You aren't currently logged in.</p>
+	{% endif %}
+{% endblock %}
