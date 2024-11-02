@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
 
 
-def is_admin(username):
+def is_admin(username) -> bool:
     if(username is None):
         return False
     with sqlite3.connect('users.db') as conn:
@@ -280,7 +280,7 @@ def admin():
                 app.config.from_mapping(new_config_data)
                 with open('config.json', 'wt', encoding = 'utf-8') as config_file:
                     json.dump(new_config_data, config_file, indent = 1)
-            flash('config settings have been updated.', 'success')
+                flash('config settings have been updated.', 'success')
         elif(request.form['action'] == 'register'):
             username = request.form.get('username')
             password = request.form.get('password', 'password')
@@ -293,7 +293,7 @@ def admin():
                     cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password, user_UUID, permissions))
                     flash('New account created.', 'success')
                 except sqlite3.IntegrityError as e:
-                    flash(f'Accouount creation failed: {e}', 'error')
+                    flash(f'Account creation failed: {e}', 'error')
                 cur.close()
     with open('config.json', 'rt', encoding = 'utf-8') as config_file:
         config_data = json.load(config_file)
