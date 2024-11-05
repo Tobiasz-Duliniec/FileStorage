@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+	<header>
+		<h2>Log in</h2>
+	</header>
+	{% if success is defined and not success %}
+	<div id="site_error">
+		<p id="error">Log in failed: username and/or password is incorrect</p>
+	</div>
+	{% endif %}
+	<form method="post" id="login_form">
+		<label for="username">Username:</label>
+		<input type="text" name="username" id="username" placeholder="username" required>
+		<label for="password">Password:</label>
+		<input type="password" name="password" id="password" placeholder="password" required>
+		<input type="submit" value="Submit!" id="submit_button">
+	</form>
+{% endblock %}

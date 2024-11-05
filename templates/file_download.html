@@ -1,22 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
-	<div id="file_selector">
-		<h2>file downloader</h2>
-		{% if number_of_files > 0 %}
-		<table class="download_table">
-			<tr>
-				<th>file name</th>
-				<th>download</th>
-			</tr>
-			{% for file in files %}
-			<tr>
-				<td class="file_name">{{file}}</td>
-				<td class="file_link"><a href="download/{{file}}">download</a></td>
-			{% endfor %}
-			</tr>
-		</table>
+	<div>
+		<header>
+			<h2>File downloader</h2>
+		</header>
+		{% if number_of_all_files > 0 %}
+			<p>Currently showing {{number_of_files}} out of {{number_of_all_files}} stored files ({{request.args.get('start')|int + 1}} - {% if request.args.get('start')|int + config['MAX_FILES_PER_PAGE'] < number_of_all_files %}{{request.args.get('start')|int + config['MAX_FILES_PER_PAGE']}}{% else %}{{number_of_all_files}}{% endif %})</p>
+			{% if request.args.get('start')|int > 0 %}
+				<a href="?start={{ request.args.get('start')|int - config['MAX_FILES_PER_PAGE'] }}" class="link_button">Previous page</a>
+			{% endif %}
+			{% if number_of_files < number_of_all_files and request.args.get('start')|int + config['MAX_FILES_PER_PAGE'] < number_of_all_files %}
+				<a href="?start={{request.args.get('start')|int + config['MAX_FILES_PER_PAGE']}}" class="link_button">Next page</a>
+			{% endif %}
+			<table class="download_table">
+				<tr>
+					<th>file name</th>
+					<th>file size (megabytes)</th>
+				</tr>
+				{% for file in files %}
+				<tr>
+					<td class="file_name"><a href="download/{{file}}">{{file}}</a></td>
+					<td class="file_size">{{files[file]}}</td>
+				</tr>
+				{% endfor %}
+			</table>
 		{% else %}
-		<p>no files to download.</p>
+			<p>No files to download.</p>
 		{% endif %}
 	</div>
 {% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+	<header>
+		<h2>Admin panel</h2>
+	</header>
+	{% with messages = get_flashed_messages(with_categories = True) %}
+		{% if messages|length > 0 %}
+				<div id="site_{{messages[0][0]}}">
+					<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
+				</div>
+		{% endif %}
+	{% endwith %}
+	<p>Create account</p>
+	<form method="post" id="login_form">
+		<input type="hidden" name="action" value="register">
+		<label for="username">Username:</label>
+		<input type="text" name="username" id="username" placeholder="username" required>
+		<label for="password">Password:</label>
+		<input type="password" name="password" id="password" placeholder="password" required>
+		<label for="permissions">Permissions:</label>
+		<select id="permissions">
+			<option value="0">User</option>
+			<option value="1">Admin</option>
+		</select>
+		<input type="submit" value="Register new account">
+	</form>
+	<p>Change configuration settings</p>
+	<form method="post" id="login_form">
+		<input type="hidden" name="action" value="config">
+		{% for element in config_data %}
+			<label for={{element}}>{{element}}:</label>
+			<input type="text" name="{{element}}" id="{{element}}" placeholder="{{element}}" value="{{ config_data[element] }}">
+		{% endfor %}
+		<input type="submit" value="Save configs">
+	</form>
+{% endblock %}

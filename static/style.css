@@ -1,33 +1,66 @@
-html{
+body{
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: auto;
+	gap: 1em;
 	background-color: lightblue;
 }
 
-#file_selector{
-	border-radius: 40px;
-	padding: 20px;
-	margin: auto;
-	border-style: solid;
-	background-color: cadetblue;
-	padding: 0 0 20px 0;
+header{
 	text-align: center;
 }
 
-table{
-	margin: auto;
-}
-
-#index_table{
-	text-align: center;
-	border-radius: 40px;
-	margin: auto;
-	border-style: solid;
-	background-color: cadetblue;
-	padding: 0 0 20px 0;
+nav span{
+	display: block;
 }
 
 #main_header{
+	grid-column-start: 1;
+	grid-column-end: 1;
+	grid-row-start: 1;
+	grid-row-end: 1;
+}
+
+main{
+	grid-column-start: 1;
+	grid-column-end: 1;
+	grid-row-start: 2;
+	grid-row-end: 2;
+	display: grid;
+	grid-template-columns: 3fr 1fr;
+	grid-template-rows: 1fr;
+	gap: 1em;
+}
+
+article{
+	place-content: center;
+	background-color: cadetblue;
+	grid-column-start: 1;
+	grid-row-start: 1;
 	text-align: center;
-	padding: 0 0 40px 0;
+	border-style: solid;
+}
+
+nav{
+	background-color: cadetblue;
+	grid-column-start: 2;
+	grid-row-start: 1;
+	text-align: center;
+	border-style: solid;
+	padding: 1em;
+}
+
+footer{
+	background-color: cadetblue;
+	grid-row-start: 3;
+	text-align: center;
+	border-style: solid;
+}
+
+input[type="file"]::file-selector-button, input[type="submit"]{
+	padding: 0.4em;
+	background-color: DarkSeaGreen;
+	border-color: black;
 }
 
 .file_name{
@@ -35,16 +68,52 @@ table{
 	text-align: left;
 }
 
-.file_link{
+.file_size{
 	padding-bottom: 20px;
 	text-align: right;
 }
 
-#front_page_link{
-	text-align: center;
+#error{
+	color: maroon;
 	font-weight: bold;
 }
 
-#index_table{
-	padding-bottom: 5px;
+#success{
+	color: navy;
+	font-weight: bold;
+}
+
+#site_error{
+	text-align: center;
+	border-radius: 20px;
+	margin: 2em;
+	border-style: solid;
+	background-color: RosyBrown;
+	padding: 1em;
+}
+
+#site_success{
+	text-align: center;
+	border-radius: 20px;
+	margin: 2em;
+	border-style: solid;
+	background-color: DarkCyan;
+	padding: 1em;
+}
+
+form{
+	padding: 1em;
+}
+
+#login_form{
+	display: grid;
+	place-items: center;
+}
+
+#login_form *{
+	margin: 0.1em;
+}
+
+table{
+	margin: auto;
 }
