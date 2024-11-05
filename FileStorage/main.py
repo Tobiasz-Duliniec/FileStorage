@@ -96,21 +96,20 @@ def convert_bytes_to_megabytes(size:int) -> float:
     return size_in_megabytes
 
 def get_file_list(username:str, file_start:int) -> dict:
-    conn = sqlite3.connect(os.path.join('instance', 'users.db'))
-    cur = conn.cursor()
-    user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
-    file_list = cur.execute('''SELECT publicFilename, internalFilename
-                                        FROM files INNER JOIN users ON files.userID=users.userID
-                                        WHERE username=? LIMIT ? OFFSET ?;''',
-                            (username,
-                             app.config['MAX_FILES_PER_PAGE'],
-                            file_start)
-                            ).fetchall()
-    file_list = dict(
-        (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
-                 for file in file_list)
-    cur.close()
-    conn.close()
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+        cur = conn.cursor()
+        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
+        file_list = cur.execute('''SELECT publicFilename, internalFilename
+                                            FROM files INNER JOIN users ON files.userID=users.userID
+                                            WHERE username=? LIMIT ? OFFSET ?;''',
+                                (username,
+                                 app.config['MAX_FILES_PER_PAGE'],
+                                file_start)
+                                ).fetchall()
+        file_list = dict(
+            (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
+                     for file in file_list)
+        cur.close()
     return file_list
 
 @app.route('/favicon.ico')
