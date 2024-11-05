@@ -33,26 +33,25 @@ def create_users_database() -> None:
     The users database will contain only admin account with the password and username "admin".
     It is recommended that the password is changed before putting the site to production.
     '''
-    conn = sqlite3.connect('users.db')
-    cur = conn.cursor()
-    cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                                username TEXT NOT NULL UNIQUE,
-                                                                password BLOB NOT NULL,
-                                                                UUID TEXT NOT NULL UNIQUE,
-                                                                permissions INTEGER NOT NULL DEFAULT 0);
-                        ''')
     password = bcrypt.hashpw('admin'.encode('utf-8'), app.config['GENSALT'])
     admin_UUID = str(uuid.uuid4())
-    cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_UUID))
-    cur.execute('''CREATE TABLE files (fileID INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                            publicFilename TEXT NOT NULL,
-                                                            internalFilename TEXT NOT NULL UNIQUE,
-                                                            userID INTEGER NOT NULL,
-                                                            FOREIGN KEY(userID) REFERENCES users(userID));
-                        ''')
-    conn.commit()
-    cur.close()
-    conn.close()
+    with sqlite3.connect('users.db') as conn: 
+        cur = conn.cursor()
+        cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                                    username TEXT NOT NULL UNIQUE,
+                                                                    password BLOB NOT NULL,
+                                                                    UUID TEXT NOT NULL UNIQUE,
+                                                                    permissions INTEGER NOT NULL DEFAULT 0);
+                            ''')
+        cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_UUID))
+        cur.execute('''CREATE TABLE files (fileID INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                                publicFilename TEXT NOT NULL,
+                                                                internalFilename TEXT NOT NULL UNIQUE,
+                                                                userID INTEGER NOT NULL,
+                                                                FOREIGN KEY(userID) REFERENCES users(userID));
+                            ''')
+        conn.commit()
+        cur.close()
     admin_file_folder = os.path.join('files', admin_UUID)
     if(not os.path.isdir(admin_file_folder)):
         os.makedirs(admin_file_folder)
