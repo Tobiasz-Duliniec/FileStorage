@@ -1,3 +1,7 @@
+'''
+Main file for the website.
+'''
+
 from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, session
 import bcrypt
 import json
@@ -5,26 +9,15 @@ import os
 import sqlite3
 import uuid
 
+from admin import admin_panel
+from errors import Errors
+
 app = Flask(__name__)
+app.register_blueprint(admin_panel)
+app.register_blueprint(Errors)
 
 app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
 
-
-def is_admin(username) -> bool:
-    if(username is None):
-        return False
-    with sqlite3.connect('users.db') as conn:
-        cur = conn.cursor()
-        permissions = cur.execute('''SELECT permissions
-                            FROM users
-                            WHERE username=?;''',
-                            (username, )).fetchone()[0]
-        cur.close()
-    return True if permissions == 1 else False
-
-@app.context_processor
-def is_admin_jinja():
-    return {'is_admin': is_admin(session.get('username'))}
 
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
@@ -121,27 +114,6 @@ def get_file_list(username:str, file_start:int) -> dict:
     cur.close()
     conn.close()
     return file_list
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    msg = 'Internal Server Error: something went wrong when processing your request.'
-    return render_template('error.html', msg = msg), 500
-
-@app.errorhandler(413)
-def request_entity_too_large(e):
-    plural = 's' if app.config['MAX_FILE_SIZE_GB'] != 1 else ""
-    msg = f"Requested Entity Too Large: you cannot upload files larger than {app.config['MAX_FILE_SIZE_GB']} gigabyte{plural}."
-    return render_template('file_upload.html', status = msg, saved = False), 413
-
-@app.errorhandler(404)
-def page_not_found(e):
-    msg = "Page Not Found: requested page couldn't be found."
-    return render_template('error.html', msg = msg), 404
-
-@app.errorhandler(401)
-def unauthorized(e):
-    msg = 'Unauthorized: you need to log in to view this page.'
-    return render_template('error.html', msg = msg), 401
 
 @app.route('/favicon.ico')
 def send_favicon():
@@ -260,44 +232,6 @@ def login():
         session['username'] = username
         return redirect('/')
     return render_template('login.html')
-
-@app.route('/admin', methods = ['GET', 'POST'])
-def admin():
-    if(not is_admin(session.get('username'))):
-        abort(404)
-    if(request.method == 'POST'):
-        if(request.form['action'] == 'config'):
-            new_config_data = dict(request.form)
-            new_config_data.pop('action', None)
-            new_config_data['SESSION_COOKIE_HTTPONLY'] = bool(new_config_data['SESSION_COOKIE_HTTPONLY'])
-            for x in ('MAX_FILE_SIZE_GB', 'MAX_FILES_PER_PAGE', 'MAX_FILENAME_LENGTH', 'PERMANENT_SESSION_LIFETIME'):
-                try:
-                    new_config_data[x] = int(new_config_data[x])
-                except ValueError:
-                    flash(f'Error: invalid data type in the following field: {x}', 'error')
-                    break
-            else:
-                app.config.from_mapping(new_config_data)
-                with open('config.json', 'wt', encoding = 'utf-8') as config_file:
-                    json.dump(new_config_data, config_file, indent = 1)
-                flash('config settings have been updated.', 'success')
-        elif(request.form['action'] == 'register'):
-            username = request.form.get('username')
-            password = request.form.get('password', 'password')
-            password = bcrypt.hashpw(password.encode('utf-8'), app.config['GENSALT'])
-            user_UUID = str(uuid.uuid4())
-            permissions = request.form.get('permissions', '0')
-            with sqlite3.connect('users.db') as conn:
-                cur = conn.cursor()
-                try:
-                    cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password, user_UUID, permissions))
-                    flash('New account created.', 'success')
-                except sqlite3.IntegrityError as e:
-                    flash(f'Account creation failed: {e}', 'error')
-                cur.close()
-    with open('config.json', 'rt', encoding = 'utf-8') as config_file:
-        config_data = json.load(config_file)
-    return render_template('admin.html', config_data = config_data)
 
 @app.route('/logout')
 def logout():
