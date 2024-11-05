@@ -4,6 +4,7 @@ File for admin functions.
 
 from flask import abort, Blueprint, current_app, flash, render_template, request, session
 import json
+import os
 import sqlite3
 
 admin_panel = Blueprint('administration', __name__)
@@ -12,7 +13,7 @@ admin_panel = Blueprint('administration', __name__)
 def is_admin(username) -> bool:
     if(username is None):
         return False
-    with sqlite3.connect('users.db') as conn:
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
         permissions = cur.execute('''SELECT permissions
                             FROM users
@@ -42,7 +43,7 @@ def admin():
                     break
             else:
                 current_app.config.from_mapping(new_config_data)
-                with open('config.json', 'wt', encoding = 'utf-8') as config_file:
+                with open(os.path.join('instance', 'config.json'), 'wt', encoding = 'utf-8') as config_file:
                     json.dump(new_config_data, config_file, indent = 1)
                 flash('config settings have been updated.', 'success')
         elif(request.form['action'] == 'register'):
@@ -51,7 +52,7 @@ def admin():
             password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
             user_UUID = str(uuid.uuid4())
             permissions = request.form.get('permissions', '0')
-            with sqlite3.connect('users.db') as conn:
+            with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
                 cur = conn.cursor()
                 try:
                     cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password, user_UUID, permissions))
@@ -59,6 +60,6 @@ def admin():
                 except sqlite3.IntegrityError as e:
                     flash(f'Account creation failed: {e}', 'error')
                 cur.close()
-    with open('config.json', 'rt', encoding = 'utf-8') as config_file:
+    with open(os.path.join('instance', 'config.json'), 'rt', encoding = 'utf-8') as config_file:
         config_data = json.load(config_file)
     return render_template('admin.html', config_data = config_data)

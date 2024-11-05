@@ -1,3 +1,2 @@
-FileStorage/*.json
-FileStorage/*.db
+FileStorage/instance/
 FileStorage/files/

@@ -18,7 +18,6 @@ app.register_blueprint(Errors)
 
 app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
 
-
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
         return False
@@ -35,7 +34,7 @@ def create_users_database() -> None:
     '''
     password = bcrypt.hashpw('admin'.encode('utf-8'), app.config['GENSALT'])
     admin_UUID = str(uuid.uuid4())
-    with sqlite3.connect('users.db') as conn: 
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
         cur = conn.cursor()
         cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
                                                                     username TEXT NOT NULL UNIQUE,
@@ -57,7 +56,7 @@ def create_users_database() -> None:
         os.makedirs(admin_file_folder)
 
 def check_databases() -> None:
-    if(not os.path.isfile('users.db')):
+    if(not os.path.isfile(os.path.join('instance', 'users.db'))):
         create_users_database()
 
 def set_configs() -> None:
@@ -65,8 +64,8 @@ def set_configs() -> None:
     Loads data from config file if it exists.
     If it doesn't, it generates one.
     '''
-    if(os.path.isfile('config.json')):
-        app.config.from_file('config.json', load = json.load)
+    if(os.path.isfile(os.path.join('instance', 'config.json'))):
+        app.config.from_file(os.path.join('instance', 'config.json'), load = json.load)
         app.config['GENSALT'] = app.config['GENSALT'].encode('utf-8')
         app.config['SECRET_KEY'] = app.config['SECRET_KEY'].encode('utf-8')
     else:
@@ -88,7 +87,7 @@ def set_configs() -> None:
             'SESSION_COOKIE_HTTPONLY': app.config['SESSION_COOKIE_HTTPONLY'],
             'SESSION_COOKIE_SAMESITE': app.config['SESSION_COOKIE_SAMESITE']
             }
-        with open('config.json', 'wt') as file:
+        with open(os.path.join('instance', 'config.json'), 'wt') as file:
             json.dump(config_data, file, indent = 1)
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
 
@@ -97,7 +96,7 @@ def convert_bytes_to_megabytes(size:int) -> float:
     return size_in_megabytes
 
 def get_file_list(username:str, file_start:int) -> dict:
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(os.path.join('instance', 'users.db'))
     cur = conn.cursor()
     user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
     file_list = cur.execute('''SELECT publicFilename, internalFilename
@@ -140,7 +139,7 @@ def upload_file_page():
         if(not is_filename_legal(filename)):
             flash('Invalid filename: filename contains illegal characters or is too long.', 'error')
             return render_template('file_upload.html')
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(os.path.join('instance', 'users.db'))
         cur = conn.cursor()
         no_of_files = cur.execute('''SELECT COUNT(*)
                                             FROM files INNER JOIN users ON users.userID=files.userID
@@ -170,7 +169,7 @@ def send_file(file):
     if(not session.get('username')):
         return redirect('/login')
     username = session.get('username')
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(os.path.join('instance', 'users.db'))
     cur = conn.cursor()
     internal_filename, user_UUID = cur.execute('''SELECT internalfilename, UUID
                                                     FROM users
@@ -191,7 +190,7 @@ def download_file_page():
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    with sqlite3.connect('users.db') as conn:
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         number_of_all_files = conn.execute('''SELECT count(*)
                                                     FROM files
                                                     INNER JOIN users ON files.userID=users.userID
@@ -216,7 +215,7 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         password = bcrypt.hashpw(password.encode('utf-8'), app.config['GENSALT'])
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(os.path.join('instance', 'users.db'))
         cur = conn.cursor()
         user = cur.execute('''SELECT username
                                         FROM users
@@ -242,6 +241,8 @@ def index():
     return render_template('index.html')
 
 def start_website():
+    if(not os.path.isdir('instance')):
+        os.mkdir('instance')
     set_configs()
     check_databases()
     app.run()
