@@ -11,7 +11,7 @@
 		{% endif %}
 	{% endwith %}
 	<p>Create account</p>
-	<form method="post" id="login_form">
+	<form method="post" class="post_form">
 		<input type="hidden" name="action" value="register">
 		<label for="username">Username:</label>
 		<input type="text" name="username" id="username" placeholder="username" required>
@@ -25,7 +25,7 @@
 		<input type="submit" value="Register new account">
 	</form>
 	<p>Change configuration settings</p>
-	<form method="post" id="login_form">
+	<form method="post" class="post_form">
 		<input type="hidden" name="action" value="config">
 		{% for element in config_data %}
 			<label for={{element}}>{{element}}:</label>
