@@ -2,15 +2,43 @@
 File for admin functions.
 '''
 
+from bs4 import BeautifulSoup
 from flask import abort, Blueprint, current_app, flash, render_template, request, session
+import funcs
 import json
 import os
 import sqlite3
 
 admin_panel = Blueprint('administration', __name__)
 
+type_functions = {
+    'bool': bool,
+    'bytes': bytes,
+    'int': int,
+    'str': str,
+    'list': list
+}
 
-def is_admin(username) -> bool:
+def set_new_data(to_check) -> dict:
+    converted_data = {}
+    with open('configurable_data.xml', 'rt') as file:
+        parsed_file = BeautifulSoup(file, 'xml')
+        for element in parsed_file.find_all('config'):
+            config_name = element.find('name').text
+            config_type = element.find('type').text
+            try:
+                expected_type_func = type_functions[config_type]
+                if(config_type == 'bytes'):
+                    converted_data[config_name] = expected_type_func(to_check[config_name], encoding = 'utf-8')
+                elif(config_type == 'bool'):
+                    converted_data[config_name] = expected_type_func(int(to_check[config_name]))
+                else:
+                    converted_data[config_name] = expected_type_func(to_check[config_name])
+            except ValueError:
+                return {}
+    return converted_data
+
+def is_admin(username:str) -> bool:
     if(username is None):
         return False
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
@@ -21,6 +49,15 @@ def is_admin(username) -> bool:
                             (username, )).fetchone()[0]
         cur.close()
     return True if permissions == 1 else False
+
+def prepare_configs(elements) -> dict:
+    configurable_options = {}
+    for element in elements:
+        if(isinstance(elements[element], list)):
+            configurable_options[element] =  ''.join(elements[element])
+        else:
+            configurable_options[element] = elements[element]
+    return configurable_options
 
 @admin_panel.app_context_processor
 def is_admin_jinja():
@@ -34,18 +71,13 @@ def admin():
         if(request.form['action'] == 'config'):
             new_config_data = dict(request.form)
             new_config_data.pop('action', None)
-            new_config_data['SESSION_COOKIE_HTTPONLY'] = bool(new_config_data['SESSION_COOKIE_HTTPONLY'])
-            for x in ('MAX_FILE_SIZE_GB', 'MAX_FILES_PER_PAGE', 'MAX_FILENAME_LENGTH', 'PERMANENT_SESSION_LIFETIME'):
-                try:
-                    new_config_data[x] = int(new_config_data[x])
-                except ValueError:
-                    flash(f'Error: invalid data type in the following field: {x}', 'error')
-                    break
+            converted_data = set_new_data(new_config_data)
+            if(len(converted_data) > 0):
+                current_app.config.from_mapping(converted_data)
+                funcs.save_configs(converted_data)
+                flash('Config settings have been updated.', 'success')
             else:
-                current_app.config.from_mapping(new_config_data)
-                with open(os.path.join('instance', 'config.json'), 'wt', encoding = 'utf-8') as config_file:
-                    json.dump(new_config_data, config_file, indent = 1)
-                flash('config settings have been updated.', 'success')
+                flash(f'An error has occured when updating your data. Is the data you provided correct?', 'error')
         elif(request.form['action'] == 'register'):
             username = request.form.get('username')
             password = request.form.get('password', 'password')
@@ -62,4 +94,4 @@ def admin():
                 cur.close()
     with open(os.path.join('instance', 'config.json'), 'rt', encoding = 'utf-8') as config_file:
         config_data = json.load(config_file)
-    return render_template('admin.html', config_data = config_data)
+    return render_template('admin.html', config_data = prepare_configs(config_data))

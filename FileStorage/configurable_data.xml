@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configs>
+	<config>
+		<name>BANNED_CHARACTERS</name>
+		<type>list</type>
+	</config>
+	<config>
+		<name>GENSALT</name>
+		<type>bytes</type>
+	</config>
+	<config>
+		<name>MAX_FILE_SIZE_GB</name>
+		<type>int</type>
+	</config>
+	<config>
+		<name>MAX_FILES_PER_PAGE</name>
+		<type>int</type>
+	</config>
+	<config>
+		<name>MAX_FILENAME_LENGTH</name>
+		<type>int</type>
+	</config>
+	<config>
+		<name>PERMANENT_SESSION_LIFETIME</name>
+		<type>int</type>
+	</config>
+	<config>
+		<name>SECRET_KEY</name>
+		<type>bytes</type>
+	</config>
+	<config>
+		<name>SESSION_COOKIE_HTTPONLY</name>
+		<type>bool</type>
+	</config>
+	<config>
+		<name>SESSION_COOKIE_SAMESITE</name>
+		<type>str</type>
+	</config>
+	<config>
+		<name>SESSION_COOKIE_SECURE</name>
+		<type>bool</type>
+	</config>
+</configs>

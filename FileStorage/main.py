@@ -4,6 +4,7 @@ Main file for the website.
 
 from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, session
 import bcrypt
+import funcs
 import json
 import os
 import sqlite3
@@ -16,7 +17,6 @@ app = Flask(__name__)
 app.register_blueprint(admin_panel)
 app.register_blueprint(Errors)
 
-app.config['BANNED_CHARACTERS'] = {'<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#'}
 
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
@@ -69,6 +69,7 @@ def set_configs() -> None:
         app.config['GENSALT'] = app.config['GENSALT'].encode('utf-8')
         app.config['SECRET_KEY'] = app.config['SECRET_KEY'].encode('utf-8')
     else:
+        app.config['BANNED_CHARACTERS'] = ['<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#']
         app.config['GENSALT'] = bcrypt.gensalt()
         app.config['MAX_FILE_SIZE_GB'] = 1
         app.config['MAX_FILES_PER_PAGE'] = 30
@@ -77,18 +78,8 @@ def set_configs() -> None:
         app.config['SECRET_KEY'] = bcrypt.gensalt()
         app.config['SESSION_COOKIE_HTTPONLY'] = True
         app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-        config_data = {
-            'GENSALT': app.config['GENSALT'].decode(),
-            'MAX_FILE_SIZE_GB': app.config['MAX_FILE_SIZE_GB'],
-            'MAX_FILES_PER_PAGE': app.config['MAX_FILES_PER_PAGE'],
-            'MAX_FILENAME_LENGTH': app.config['MAX_FILENAME_LENGTH'],
-            'PERMANENT_SESSION_LIFETIME': app.config['PERMANENT_SESSION_LIFETIME'],
-            'SECRET_KEY': app.config['SECRET_KEY'].decode(),
-            'SESSION_COOKIE_HTTPONLY': app.config['SESSION_COOKIE_HTTPONLY'],
-            'SESSION_COOKIE_SAMESITE': app.config['SESSION_COOKIE_SAMESITE']
-            }
-        with open(os.path.join('instance', 'config.json'), 'wt') as file:
-            json.dump(config_data, file, indent = 1)
+        app.config['SESSION_COOKIE_SECURE'] = False
+        funcs.save_configs(app.config)
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
 
 def convert_bytes_to_megabytes(size:int) -> float:
