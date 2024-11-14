@@ -5,6 +5,7 @@ Different functions used by multiple files
 import json
 import os
 
+
 def save_configs(configs):
     config_data = {
         'BANNED_CHARACTERS': configs['BANNED_CHARACTERS'],

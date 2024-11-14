@@ -9,6 +9,7 @@ import json
 import os
 import sqlite3
 
+
 admin_panel = Blueprint('administration', __name__)
 
 type_functions = {
@@ -34,6 +35,8 @@ def set_new_data(to_check) -> dict:
                     converted_data[config_name] = expected_type_func(int(to_check[config_name]))
                 else:
                     converted_data[config_name] = expected_type_func(to_check[config_name])
+                    if(converted_data[config_name] in ('', 0)):
+                        raise ValueError
             except ValueError:
                 return {}
     return converted_data
@@ -75,9 +78,11 @@ def admin():
             if(len(converted_data) > 0):
                 current_app.config.from_mapping(converted_data)
                 funcs.save_configs(converted_data)
+                current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
                 flash('Config settings have been updated.', 'success')
             else:
-                flash(f'An error has occured when updating your data. Is the data you provided correct?', 'error')
+                flash(f'''An error has occured when updating your data. Is the data you provided correct? Make sure you have sent
+                            all data for all fields. For numerical values (like MAX_FILENAME_LENGTH) value must be greater than 0.''', 'error')
         elif(request.form['action'] == 'register'):
             username = request.form.get('username')
             password = request.form.get('password', 'password')

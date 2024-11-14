@@ -5,9 +5,9 @@
 	</header>
 	{% with messages = get_flashed_messages(with_categories = True) %}
 		{% if messages|length > 0 %}
-				<div id="site_{{messages[0][0]}}">
-					<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
-				</div>
+			<div id="site_{{messages[0][0]}}">
+				<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
+			</div>
 		{% endif %}
 	{% endwith %}
 	<p>Create account</p>
@@ -30,17 +30,17 @@
 		{% for element in config_data %}
 			<label for={{element}}>{{element}}:</label>
 			{% if element == "SESSION_COOKIE_HTTPONLY" or element == "SESSION_COOKIE_SECURE" %}
-			<select name="{{element}}" id="{{element}}">
-				<option value="0"{% if not config[element] %}selected{% endif %}>False</option>
-				<option value="1"{% if config[element] %}selected{% endif %}>True</option>
-			</select>
+				<select name="{{element}}" id="{{element}}">
+					<option value="0"{% if not config[element] %}selected{% endif %}>False</option>
+					<option value="1"{% if config[element] %}selected{% endif %}>True</option>
+				</select>
 			{% elif element == "SESSION_COOKIE_SAMESITE" %}
-			<select name="{{element}}" id="{{element}}">
-				<option value="Lax"{% if config_data[element] == "Lax" %}selected{% endif %}>Lax</option>
-				<option value="Strict"{% if config_data[element] == "Strict" %}selected{% endif %}>Strict</option>
-			</select>
+				<select name="{{element}}" id="{{element}}">
+					<option value="Lax"{% if config_data[element] == "Lax" %}selected{% endif %}>Lax</option>
+					<option value="Strict"{% if config_data[element] == "Strict" %}selected{% endif %}>Strict</option>
+				</select>
 			{% else %}
-			<input type="text" name="{{element}}" id="{{element}}" placeholder="{{element}}" value="{{ config_data[element] }}">
+				<input type="text" name="{{element}}" id="{{element}}" placeholder="{{element}}" value="{{ config_data[element] }}">
 			{% endif %}
 		{% endfor %}
 		<input type="submit" value="Save configs">

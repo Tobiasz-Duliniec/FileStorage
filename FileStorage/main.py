@@ -81,7 +81,7 @@ def set_configs() -> None:
         app.config['SESSION_COOKIE_SECURE'] = False
         funcs.save_configs(app.config)
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
-
+    
 def convert_bytes_to_megabytes(size:int) -> float:
     size_in_megabytes = round((size / (1024 * 1024)), 3)
     return size_in_megabytes

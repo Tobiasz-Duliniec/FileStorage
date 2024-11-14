@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
+	{% with messages = get_flashed_messages() %}
 	<div id="site_error">
-		<p id="error">{{msg}}</p>
+		<p id="error">{{messages[0]}}</p>
 	</div>
+	{% endwith %}
 {% endblock %}
