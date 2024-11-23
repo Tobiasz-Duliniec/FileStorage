@@ -20,7 +20,7 @@ type_functions = {
     'list': list
 }
 
-def set_new_data(to_check) -> dict:
+def validate_new_data(to_check) -> dict:
     converted_data = {}
     with open('configurable_data.xml', 'rt') as file:
         parsed_file = BeautifulSoup(file, 'xml')
@@ -53,18 +53,23 @@ def is_admin(username:str) -> bool:
         cur.close()
     return True if permissions == 1 else False
 
-def prepare_configs(elements) -> dict:
-    configurable_options = {}
-    for element in elements:
-        if(isinstance(elements[element], list)):
-            configurable_options[element] =  ''.join(elements[element])
-        else:
-            configurable_options[element] = elements[element]
-    return configurable_options
+def prepare_configs(element):
+    if(isinstance(element, list)):
+        return "".join(element)
+    elif(isinstance(element, bytes)):
+        return element.decode()
+    else:
+        return element
 
 @admin_panel.app_context_processor
 def is_admin_jinja():
     return {'is_admin': is_admin(session.get('username'))}
+
+@admin_panel.app_context_processor
+def get_config_value():
+    def get_value(value_name):
+        return prepare_configs(current_app.config.get(value_name, None))
+    return {'get_config_value': get_value}
 
 @admin_panel.route('/admin', methods = ['GET', 'POST'])
 def admin():
@@ -74,10 +79,10 @@ def admin():
         if(request.form['action'] == 'config'):
             new_config_data = dict(request.form)
             new_config_data.pop('action', None)
-            converted_data = set_new_data(new_config_data)
-            if(len(converted_data) > 0):
-                current_app.config.from_mapping(converted_data)
-                funcs.save_configs(converted_data)
+            new_config_data = validate_new_data(new_config_data)
+            if(len(new_config_data) > 0):
+                current_app.config.from_mapping(new_config_data)
+                funcs.save_configs(new_config_data)
                 current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
                 flash('Config settings have been updated.', 'success')
             else:
@@ -97,6 +102,6 @@ def admin():
                 except sqlite3.IntegrityError as e:
                     flash(f'Account creation failed: {e}', 'error')
                 cur.close()
-    with open(os.path.join('instance', 'config.json'), 'rt', encoding = 'utf-8') as config_file:
-        config_data = json.load(config_file)
-    return render_template('admin.html', config_data = prepare_configs(config_data))
+    
+    config_data = funcs.get_configs()
+    return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))

@@ -13,10 +13,10 @@ import uuid
 from admin import admin_panel
 from errors import Errors
 
+
 app = Flask(__name__)
 app.register_blueprint(admin_panel)
 app.register_blueprint(Errors)
-
 
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
@@ -76,12 +76,13 @@ def set_configs() -> None:
         app.config['MAX_FILENAME_LENGTH'] = 32
         app.config['PERMANENT_SESSION_LIFETIME'] = 10800
         app.config['SECRET_KEY'] = bcrypt.gensalt()
+        app.config['SEND_ROBOTS_TXT'] = False
         app.config['SESSION_COOKIE_HTTPONLY'] = True
         app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
         app.config['SESSION_COOKIE_SECURE'] = False
         funcs.save_configs(app.config)
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
-    
+
 def convert_bytes_to_megabytes(size:int) -> float:
     size_in_megabytes = round((size / (1024 * 1024)), 3)
     return size_in_megabytes
@@ -113,7 +114,10 @@ def send_css():
 
 @app.route('/robots.txt')
 def send_robots_txt():
-    return send_from_directory('static', 'robots.txt')
+    if(app.config['SEND_ROBOTS_TXT']):
+        return send_from_directory('static', 'robots.txt')
+    else:
+        abort(404)
 
 @app.route('/upload', methods = ['GET', 'POST'])
 def upload_file_page():

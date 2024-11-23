@@ -29,6 +29,10 @@
 		<type>bytes</type>
 	</config>
 	<config>
+		<name>SEND_ROBOTS_TXT</name>
+		<type>bool</type>
+	</config>
+	<config>
 		<name>SESSION_COOKIE_HTTPONLY</name>
 		<type>bool</type>
 	</config>

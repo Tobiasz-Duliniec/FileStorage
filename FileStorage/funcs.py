@@ -2,22 +2,29 @@
 Different functions used by multiple files
 '''
 
+from bs4 import BeautifulSoup
 import json
 import os
 
+def get_configs() -> dict:
+    config_data = {}
+    with open('configurable_data.xml', 'rt') as file:
+        parsed_file = BeautifulSoup(file, 'xml')
+        for element in parsed_file.find_all('config'):
+            config_name = element.find('name').text
+            config_type = element.find('type').text
+            config_data[config_name] = config_type
+    return config_data
 
-def save_configs(configs):
-    config_data = {
-        'BANNED_CHARACTERS': configs['BANNED_CHARACTERS'],
-        'GENSALT': configs['GENSALT'].decode(),
-        'MAX_FILE_SIZE_GB': configs['MAX_FILE_SIZE_GB'],
-        'MAX_FILES_PER_PAGE': configs['MAX_FILES_PER_PAGE'],
-        'MAX_FILENAME_LENGTH': configs['MAX_FILENAME_LENGTH'],
-        'PERMANENT_SESSION_LIFETIME': configs['PERMANENT_SESSION_LIFETIME'],
-        'SECRET_KEY': configs['SECRET_KEY'].decode(),
-        'SESSION_COOKIE_HTTPONLY': configs['SESSION_COOKIE_HTTPONLY'],
-        'SESSION_COOKIE_SAMESITE': configs['SESSION_COOKIE_SAMESITE'],
-        'SESSION_COOKIE_SECURE': configs['SESSION_COOKIE_SECURE']
-        }
+def save_configs(configs:dict) -> None:
+    config_data = {}
+    with open('configurable_data.xml', 'rt') as file:
+        parsed_file = BeautifulSoup(file, 'xml')
+        for element in parsed_file.find_all('config'):
+            config_name = element.find('name').text
+            if(isinstance(configs[config_name], bytes)):
+                config_data[config_name] = configs[config_name].decode()
+            else:
+                config_data[config_name] = configs[config_name]
     with open(os.path.join('instance', 'config.json'), 'wt', encoding='utf-8') as file:
         json.dump(config_data, file, indent = 1)
