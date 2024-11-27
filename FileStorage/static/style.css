@@ -57,7 +57,7 @@ footer{
 	border-style: solid;
 }
 
-input[type="file"]::file-selector-button, input[type="submit"]{
+input[type="file"]::file-selector-button, input[type="submit"], button{
 	padding: 0.4em;
 	background-color: DarkSeaGreen;
 	border-color: black;

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+	<div id="file_infotable">
+		<header>
+			<h1>File information</h1>
+		</header>
+		{% with messages = get_flashed_messages(with_categories = True) %}
+			{% if messages|length > 0 %}
+				<div id="site_{{messages[0][0]}}">
+					<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
+				</div>
+			{% endif %}
+		{% endwith %}
+		{% if request.path.startswith('/shared_files/') %}
+			<p>File name: {{file[0]}}</p>
+			<p>File size: {{file[3]}} (megabytes)</p>
+			<p>Shared by: {{file[2]}}</p>
+			<form action="/shared_file_download/{{file[4]}}" method="get">
+				<input type="submit" value="Download file">
+			</form>
+		{% else %}
+			<p>File name: {{file[0]}}</p>
+			<p>File size: {{file[1]}} (megabytes)</p>
+			<p>Status: {% if file[2] is none %}not shared{% else %}shared (share URL: {{request.url_root}}shared_files/{{file[2]}}){% endif %}</p>
+			<form action="/download/{{file[0]}}" method="get">
+				<input type="submit" value="Download file">
+			</form>
+			{% if file[2] is none %}
+				<form action="/share/{{file[0]}}" method="post">
+					<input type="submit" value="Share file">
+				</form>
+			{% else %}
+				<form action="/unshare/{{file[0]}}" method="post">
+					<input type="submit" value="Unshare file">
+				</form>
+			{% endif %}
+		{% endif %}
+	</div>
+{% endblock %}

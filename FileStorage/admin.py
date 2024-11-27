@@ -4,10 +4,12 @@ File for admin functions.
 
 from bs4 import BeautifulSoup
 from flask import abort, Blueprint, current_app, flash, render_template, request, session
+import bcrypt
 import funcs
 import json
 import os
 import sqlite3
+import uuid
 
 
 admin_panel = Blueprint('administration', __name__)
