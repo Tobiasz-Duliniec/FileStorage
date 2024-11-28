@@ -183,18 +183,33 @@ def account_info():
     if(request.method == 'POST'):
         new_password = request.form.get('new_password', None)
         new_password_confirmation = request.form.get('new_password_confirmation', None)
+        current_password = request.form.get('current_password', None)
         if(new_password == new_password_confirmation and new_password is not None and new_password_confirmation is not None):
+            new_password = bcrypt.hashpw(new_password.encode('utf-8'), app.config['GENSALT'])
+            current_password = bcrypt.hashpw(current_password.encode('utf-8'), app.config['GENSALT'])
             with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
                 cur = conn.cursor()
-                cur.execute('''UPDATE users
-                                SET password = ?
-                                WHERE username = ?''',
-                            ((bcrypt.hashpw(new_password.encode('utf-8'), app.config['GENSALT'])), username))
+            
+                current_password_correct = (cur.execute('''
+                            SELECT count(*)
+                            FROM users
+                            WHERE username = ?
+                            AND password = ?''',
+                            (username, current_password)).fetchone()[0]
+                            == 1)
+                if(current_password_correct):
+                    cur.execute('''UPDATE users
+                                    SET password = ?
+                                    WHERE username = ?
+                                    AND password = ?''',
+                                (new_password, username, current_password))
+                    flash('Password changed succesfully.', 'success')
+                else:
+                    flash('Please input the correct current password', 'error')
                 cur.close()
                 conn.commit()
-                flash('Password changed succesfully.', 'success')
         else:
-            commit('Please enter two matching passwords', 'error')
+            flash('Please enter two matching passwords', 'error')
     return render_template('account.html', username = username)
 
 @app.route('/share/<file>', methods = ['POST'])
