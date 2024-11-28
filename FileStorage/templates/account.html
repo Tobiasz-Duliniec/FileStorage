@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+	<header>
+		<h2>User account</h2>
+	</header>
+	<p>Username: {{username}}</p>
+	{% with messages = get_flashed_messages(with_categories = True) %}
+		{% if messages|length > 0 %}
+			<div id="site_{{messages[0][0]}}">
+				<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
+			</div>
+		{% endif %}
+	{% endwith %}
+	<form method="post" class="post_form">
+		<label for="new_password">New password:</label>
+		<input id="new_password" name="new_password" type="password">
+		<label for="new_password_confirmation">Confirm password:</label>
+		<input id="new_password_confirmation" name="new_password_confirmation" type="password">
+		<input type="submit" value="Change password">
+	</form>
+{% endblock %}

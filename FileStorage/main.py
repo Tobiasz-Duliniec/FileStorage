@@ -37,19 +37,19 @@ def create_users_database() -> None:
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
         cur = conn.cursor()
         cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                                    username TEXT NOT NULL UNIQUE,
-                                                                    password BLOB NOT NULL,
-                                                                    UUID TEXT NOT NULL UNIQUE,
-                                                                    permissions INTEGER NOT NULL DEFAULT 0);''')
+                                                                username TEXT NOT NULL UNIQUE,
+                                                                password BLOB NOT NULL,
+                                                                UUID TEXT NOT NULL UNIQUE,
+                                                                permissions INTEGER NOT NULL DEFAULT 0);''')
         cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_UUID))
         cur.execute('''CREATE TABLE files (fileID INTEGER PRIMARY KEY AUTOINCREMENT,
                                                                 publicFilename TEXT NOT NULL,
                                                                 internalFilename TEXT NOT NULL UNIQUE,
                                                                 userID INTEGER NOT NULL,
                                                                 FOREIGN KEY(userID) REFERENCES users(userID));''')
-        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT,
-                                                                            shareURL TEXT,
-                                                                            PRIMARY KEY(internalFilename));''')
+        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT UNIQUE,
+                                                                shareURL TEXT UNIQUE,
+                                                                PRIMARY KEY(internalFilename));''')
         conn.commit()
         cur.close()
     admin_file_folder = os.path.join('files', admin_UUID)
@@ -175,6 +175,28 @@ def unshare_file(file):
         cur.close()
     return redirect(url_for('show_file_info', file = file))
 
+@app.route('/account', methods = ['GET', 'POST'])
+def account_info():
+    if(not session.get('username')):
+        abort(401)
+    username = session.get('username')
+    if(request.method == 'POST'):
+        new_password = request.form.get('new_password', None)
+        new_password_confirmation = request.form.get('new_password_confirmation', None)
+        if(new_password == new_password_confirmation and new_password is not None and new_password_confirmation is not None):
+            with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+                cur = conn.cursor()
+                cur.execute('''UPDATE users
+                                SET password = ?
+                                WHERE username = ?''',
+                            ((bcrypt.hashpw(new_password.encode('utf-8'), app.config['GENSALT'])), username))
+                cur.close()
+                conn.commit()
+                flash('Password changed succesfully.', 'success')
+        else:
+            commit('Please enter two matching passwords', 'error')
+    return render_template('account.html', username = username)
+
 @app.route('/share/<file>', methods = ['POST'])
 def share_file(file):
     if(not session.get('username')):
@@ -183,11 +205,11 @@ def share_file(file):
     with sqlite3.connect(os.path.join('instance','users.db')) as conn:
         cur = conn.cursor()
         file_shared = bool(
-                                    cur.execute('''SELECT count(*) FROM fileShares
+                                cur.execute('''SELECT count(*) FROM fileShares
                                                 WHERE internalFilename = (
                                                 SELECT internalFilename FROM files
                                                 WHERE publicFilename = ?);''', (file, )).fetchone()[0]
-                                    )
+                        )
         if(file_shared):
             flash('Error: this file is already shared!', 'error')
         else:
@@ -330,7 +352,7 @@ def start_website():
         os.mkdir('instance')
     set_configs()
     check_databases()
-    app.run()
+    app.run(host='0.0.0.0')
 
 if(__name__ == '__main__'):
     start_website()

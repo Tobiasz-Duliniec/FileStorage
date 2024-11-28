@@ -26,4 +26,4 @@ def page_not_found(e):
 @Errors.app_errorhandler(401)
 def unauthorized(e):
     flash('Unauthorized: you need to log in to view this page.')
-    return render_template('error.html', msg = msg), 401
+    return render_template('error.html'), 401
