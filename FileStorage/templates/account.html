@@ -4,20 +4,15 @@
 		<h2>User account</h2>
 	</header>
 	<p>Username: {{username}}</p>
-	{% with messages = get_flashed_messages(with_categories = True) %}
-		{% if messages|length > 0 %}
-			<div id="site_{{messages[0][0]}}">
-				<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
-			</div>
-		{% endif %}
-	{% endwith %}
+	<h3>Change password</h3>
+	{% include "status.html" %}
 	<form method="post" class="post_form">
 		<label for="current_password">Current password:</label>
-		<input id="current_password" name="current_password" type="password" placeholder="current password">
+		<input id="current_password" name="current_password" type="password" placeholder="current password" required>
 		<label for="new_password">New password:</label>
-		<input id="new_password" name="new_password" type="password" placeholder="new password">
+		<input id="new_password" name="new_password" type="password" placeholder="new password" required>
 		<label for="new_password_confirmation">Confirm password:</label>
-		<input id="new_password_confirmation" name="new_password_confirmation" type="password" placeholder="confirm new password">
+		<input id="new_password_confirmation" name="new_password_confirmation" type="password" placeholder="confirm new password" required>
 		<input type="submit" value="Change password">
 	</form>
 {% endblock %}

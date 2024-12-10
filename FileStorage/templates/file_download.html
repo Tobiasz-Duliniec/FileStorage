@@ -4,6 +4,7 @@
 		<header>
 			<h2>File download</h2>
 		</header>
+		{% include "status.html" %}
 		{% if number_of_all_files > 0 %}
 			<p>Currently showing {{number_of_files}} out of {{number_of_all_files}} stored files ({{request.args.get('start')|int + 1}} - {% if request.args.get('start')|int + config['MAX_FILES_PER_PAGE'] < number_of_all_files %}{{request.args.get('start')|int + config['MAX_FILES_PER_PAGE']}}{% else %}{{number_of_all_files}}{% endif %})</p>
 			{% if request.args.get('start')|int > 0 %}

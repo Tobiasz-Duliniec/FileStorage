@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 
+
 def get_configs() -> dict:
     config_data = {}
     with open('configurable_data.xml', 'rt') as file:
@@ -18,7 +19,7 @@ def get_configs() -> dict:
 
 def save_configs(configs:dict) -> None:
     config_data = {}
-    with open('configurable_data.xml', 'rt') as file:
+    with open('configurable_data.xml', 'rt', encoding = 'UTF-8') as file:
         parsed_file = BeautifulSoup(file, 'xml')
         for element in parsed_file.find_all('config'):
             config_name = element.find('name').text

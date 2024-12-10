@@ -4,13 +4,7 @@
 		<header>
 			<h1>File information</h1>
 		</header>
-		{% with messages = get_flashed_messages(with_categories = True) %}
-			{% if messages|length > 0 %}
-				<div id="site_{{messages[0][0]}}">
-					<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
-				</div>
-			{% endif %}
-		{% endwith %}
+		{% include "status.html" %}
 		{% if request.path.startswith('/shared_files/') %}
 			<p>File name: {{file[0]}}</p>
 			<p>File size: {{file[3]}} (megabytes)</p>
@@ -34,6 +28,9 @@
 					<input type="submit" value="Unshare file">
 				</form>
 			{% endif %}
+				<form action="/delete/{{file[0]}}" method="post">
+					<input type="submit" value="Delete file">
+				</form>
 		{% endif %}
 	</div>
 {% endblock %}

@@ -3,14 +3,8 @@
 	<header>
 		<h2>Admin panel</h2>
 	</header>
-	{% with messages = get_flashed_messages(with_categories = True) %}
-		{% if messages|length > 0 %}
-			<div id="site_{{messages[0][0]}}">
-				<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
-			</div>
-		{% endif %}
-	{% endwith %}
-	<p>Create account</p>
+	{% include "status.html" %}
+	<h3>Create account</h3>
 	<form method="post" class="post_form">
 		<input type="hidden" name="action" value="register">
 		<label for="username">Username:</label>
@@ -24,7 +18,7 @@
 		</select>
 		<input type="submit" value="Register new account">
 	</form>
-	<p>Change configuration settings</p>
+	<h3>Change configuration settings</h3>
 	<form method="post" class="post_form">
 		<input type="hidden" name="action" value="config">
 		{% for element in config_data %}

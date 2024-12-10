@@ -36,20 +36,20 @@ def create_users_database() -> None:
     admin_UUID = str(uuid.uuid4())
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
         cur = conn.cursor()
-        cur.execute('''CREATE TABLE users (userID INTEGER PRIMARY KEY AUTOINCREMENT,
+        cur.execute('''CREATE TABLE users (UUID TEXT PRIMARY KEY,
                                                                 username TEXT NOT NULL UNIQUE,
                                                                 password BLOB NOT NULL,
-                                                                UUID TEXT NOT NULL UNIQUE,
                                                                 permissions INTEGER NOT NULL DEFAULT 0);''')
-        cur.execute('INSERT INTO users (username, password, UUID, permissions) VALUES ("admin", ?, ?, 1)', (password, admin_UUID))
-        cur.execute('''CREATE TABLE files (fileID INTEGER PRIMARY KEY AUTOINCREMENT,
+        cur.execute('INSERT INTO users (UUID, username, password, permissions) VALUES (?, "admin", ?, 1)', (admin_UUID, password))
+        cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
                                                                 publicFilename TEXT NOT NULL,
-                                                                internalFilename TEXT NOT NULL UNIQUE,
-                                                                userID INTEGER NOT NULL,
-                                                                FOREIGN KEY(userID) REFERENCES users(userID));''')
-        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT UNIQUE,
+                                                                UUID INTEGER NOT NULL,
+                                                                FOREIGN KEY(UUID) REFERENCES users(UUID));
+                                                                ''')
+        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
                                                                 shareURL TEXT UNIQUE,
-                                                                PRIMARY KEY(internalFilename));''')
+                                                                FOREIGN KEY(internalFilename) REFERENCES files(internalFilename) ON DELETE CASCADE);''')
+
         conn.commit()
         cur.close()
     admin_file_folder = os.path.join('files', admin_UUID)
@@ -93,7 +93,7 @@ def get_file_list(username:str, file_start:int) -> dict:
         cur = conn.cursor()
         user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
         file_list = cur.execute('''SELECT publicFilename, internalFilename
-                                            FROM files INNER JOIN users ON files.userID=users.userID
+                                            FROM files INNER JOIN users ON files.UUID=users.UUID
                                             WHERE username=? LIMIT ? OFFSET ?;''',
                                 (username,
                                  app.config['MAX_FILES_PER_PAGE'],
@@ -136,7 +136,7 @@ def upload_file_page():
         conn = sqlite3.connect(os.path.join('instance', 'users.db'))
         cur = conn.cursor()
         no_of_files = cur.execute('''SELECT COUNT(*)
-                                            FROM files INNER JOIN users ON users.userID=files.userID
+                                            FROM files INNER JOIN users ON users.UUID=files.UUID
                                             WHERE publicFilename=? AND username=?;''',
                                             (filename, username)).fetchone()[0]
         if(no_of_files > 0):
@@ -144,13 +144,13 @@ def upload_file_page():
             cur.close()
             flash("Couldn't save the file: file with such name already exists", 'error')
             return render_template('file_upload.html')
-        uploader_id, uploader_UUID = cur.execute('''SELECT userID, UUID
-                                                                            FROM users
-                                                                            WHERE username=?;''',
-                                                        (username, )).fetchone()
+        uploader_UUID = cur.execute('''SELECT UUID
+                                                FROM users
+                                                WHERE username=?;''',
+                                                (username, )).fetchone()[0]
         internal_name = str(uuid.uuid4())
         file.save(os.path.join('files', uploader_UUID, internal_name))
-        cur.execute('INSERT INTO files (publicFilename, internalFilename, userID) VALUES (?, ?, ?);', (filename, internal_name, uploader_id))
+        cur.execute('INSERT INTO files (publicFilename, internalFilename, UUID) VALUES (?, ?, ?);', (filename, internal_name, uploader_UUID))
         conn.commit()
         cur.close()
         conn.close()
@@ -167,10 +167,10 @@ def unshare_file(file):
         cur = conn.cursor()
         share_url = cur.execute('''SELECT shareURL
                                     FROM files INNER JOIN users INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                    WHERE publicFilename=? and username=?;''',
+                                    WHERE publicFilename=? AND username=?;''',
                                     (file, username)).fetchone()
         if(share_url is not None):
-            cur.execute('delete from fileShares where shareURL = ?', (share_url[0], ))
+            cur.execute('DELETE FROM fileShares WHERE shareURL = ?', (share_url[0], ))
             flash('File unshared.', 'success')
         cur.close()
     return redirect(url_for('show_file_info', file = file))
@@ -184,7 +184,7 @@ def account_info():
         new_password = request.form.get('new_password', None)
         new_password_confirmation = request.form.get('new_password_confirmation', None)
         current_password = request.form.get('current_password', None)
-        if(new_password == new_password_confirmation and new_password is not None and new_password_confirmation is not None):
+        if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
             new_password = bcrypt.hashpw(new_password.encode('utf-8'), app.config['GENSALT'])
             current_password = bcrypt.hashpw(current_password.encode('utf-8'), app.config['GENSALT'])
             with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
@@ -209,8 +209,27 @@ def account_info():
                 cur.close()
                 conn.commit()
         else:
-            flash('Please enter two matching passwords', 'error')
+            flash('Please enter two matching passwords and your current password.', 'error')
     return render_template('account.html', username = username)
+
+
+@app.route('/delete/<file>', methods = ['POST'])
+def delete_file(file):
+    if(not session.get('username')):
+        abort(401)
+    username = session.get('username')
+    if(request.method == 'POST'):
+        with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+            cur = conn.cursor()
+            cur.execute('PRAGMA foreign_keys = ON;')
+            cur.execute('''DELETE
+                    FROM files
+                    WHERE publicFilename = (SELECT publicFilename from files INNER JOIN users ON files.UUID=users.UUID
+                    WHERE publicFilename=? AND username=? LIMIT 1);''', (file, username))
+            conn.commit()
+            cur.close()
+        flash('File deleted succesfully', 'success')
+    return redirect(url_for('download_file_page'))
 
 @app.route('/share/<file>', methods = ['POST'])
 def share_file(file):
@@ -229,7 +248,7 @@ def share_file(file):
             flash('Error: this file is already shared!', 'error')
         else:
             internal_filename = cur.execute('''SELECT internalFilename
-                                                FROM files INNER JOIN users ON files.userID = users.userID
+                                                FROM files INNER JOIN users ON files.UUID = users.UUID
                                                 WHERE publicFilename = ? AND username = ?;''', (file, username)).fetchone()[0]
             share_url = str(uuid.uuid4())
             cur.execute('INSERT INTO fileShares VALUES (?, ?)', (internal_filename, share_url))
@@ -250,7 +269,7 @@ def send_file(file):
                 internal_filename, publicFilename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, UUID
                                                                 FROM users
                                                                 INNER JOIN files
-                                                                ON users.userID = files.userID
+                                                                ON users.UUID = files.UUID
                                                                 WHERE publicFilename = ?
                                                                 AND username = ?;''',
                                                         (file, username)).fetchone()
@@ -260,7 +279,7 @@ def send_file(file):
                                                                 INNER JOIN files
                                                                 ON fileShares.internalFilename = files.internalFilename
                                                                 INNER JOIN users
-                                                                ON files.userID = users.userID
+                                                                ON files.UUID = users.UUID
                                                                 WHERE shareURL = ?;''',
                                                         (file, )).fetchone()
             cur.close()
@@ -281,7 +300,7 @@ def show_shared_file_info(shareURL):
         cur = conn.cursor()
         user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
         file_info = cur.execute('''SELECT publicFilename, files.internalFilename, username
-                                        FROM files INNER JOIN users ON files.userID=users.userID
+                                        FROM files INNER JOIN users ON files.UUID=users.UUID
                                         INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
                                         WHERE shareURL=?;''', (shareURL, )).fetchone()
         cur.close()
@@ -315,7 +334,7 @@ def download_file_page():
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         number_of_all_files = conn.execute('''SELECT count(*)
                                                     FROM files
-                                                    INNER JOIN users ON files.userID=users.userID
+                                                    INNER JOIN users ON files.UUID=users.UUID
                                                     WHERE username=?;''', (username, )).fetchone()[0]
     if(request.args.get('start') is not None):
         try:
@@ -367,7 +386,8 @@ def start_website():
         os.mkdir('instance')
     set_configs()
     check_databases()
-    app.run(host='0.0.0.0')
+
+    app.run()
 
 if(__name__ == '__main__'):
     start_website()
