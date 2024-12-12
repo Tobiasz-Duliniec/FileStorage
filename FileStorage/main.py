@@ -43,7 +43,7 @@ def create_users_database() -> None:
         cur.execute('INSERT INTO users (UUID, username, password, permissions) VALUES (?, "admin", ?, 1)', (admin_UUID, password))
         cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
                                                                 publicFilename TEXT NOT NULL,
-                                                                UUID INTEGER NOT NULL,
+                                                                UUID INTEGER NOT NULL UNIQUE,
                                                                 FOREIGN KEY(UUID) REFERENCES users(UUID));
                                                                 ''')
         cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
@@ -159,7 +159,7 @@ def upload_file_page():
     return render_template('file_upload.html')
 
 @app.route('/unshare/<file>', methods = ['POST'])
-def unshare_file(file):
+def unshare_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
@@ -214,7 +214,7 @@ def account_info():
 
 
 @app.route('/delete/<file>', methods = ['POST'])
-def delete_file(file):
+def delete_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
@@ -258,7 +258,7 @@ def share_file(file):
 
 @app.route('/download/<file>')
 @app.route('/shared_file_download/<file>')
-def send_file(file):
+def send_file(file:str):
     if(not session.get('username')):
         return redirect('/login')
     username = session.get('username')
@@ -266,7 +266,7 @@ def send_file(file):
         cur = conn.cursor()
         try:
             if(request.path.startswith('/download/')):
-                internal_filename, publicFilename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, UUID
+                internal_filename, publicFilename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, users.UUID
                                                                 FROM users
                                                                 INNER JOIN files
                                                                 ON users.UUID = files.UUID
@@ -292,7 +292,7 @@ def send_file(file):
         abort(404)
 
 @app.route('/shared_files/<shareURL>')
-def show_shared_file_info(shareURL):
+def show_shared_file_info(shareURL:str):
     if(not session.get('username')):
         abort(404)
     username = session.get('username')
@@ -307,11 +307,10 @@ def show_shared_file_info(shareURL):
         if(file_info is None):
             abort(404)
         file_info = file_info + (convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file_info[1]))), shareURL)
-    
     return render_template('files.html', file = file_info)
 
 @app.route('/files/<file>')
-def show_file_info(file):
+def show_file_info(file:str):
     if(not session.get('username')):
         abort(404)
     username = session.get('username')
@@ -386,8 +385,7 @@ def start_website():
         os.mkdir('instance')
     set_configs()
     check_databases()
-
-    app.run()
+    app.run(host='0.0.0.0')
 
 if(__name__ == '__main__'):
     start_website()
