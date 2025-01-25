@@ -33,11 +33,15 @@ def validate_new_data(to_check) -> dict:
                 expected_type_func = type_functions[config_type]
                 if(config_type == 'bytes'):
                     converted_data[config_name] = expected_type_func(to_check[config_name], encoding = 'utf-8')
+                elif(config_type == 'int'):
+                    converted_data[config_name] = expected_type_func(to_check[config_name])
+                    if(converted_data[config_name] <= 0):
+                        raise ValueError
                 elif(config_type == 'bool'):
                     converted_data[config_name] = expected_type_func(int(to_check[config_name]))
                 else:
                     converted_data[config_name] = expected_type_func(to_check[config_name])
-                    if(converted_data[config_name] in ('', 0)):
+                    if(converted_data[config_name] == ''):
                         raise ValueError
             except ValueError:
                 return {}
@@ -53,7 +57,7 @@ def is_admin(username:str) -> bool:
                             WHERE username=?;''',
                             (username, )).fetchone()[0]
         cur.close()
-    return True if permissions == 1 else False
+    return permissions == 1
 
 def prepare_configs(element):
     if(isinstance(element, list)):

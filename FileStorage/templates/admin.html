@@ -25,13 +25,13 @@
 			<label for={{element}}>{{element}}:</label>
 			{% if config_data[element] == "bool" %}
 				<select name="{{element}}" id="{{element}}">
-					<option value="0"{% if not get_config_value(element) %}selected{% endif %}>False</option>
-					<option value="1"{% if get_config_value(element) %}selected{% endif %}>True</option>
+					<option value="0"{% if not get_config_value(element) %} selected{% endif %}>False</option>
+					<option value="1"{% if get_config_value(element) %} selected{% endif %}>True</option>
 				</select>
 			{% elif element == "SESSION_COOKIE_SAMESITE" %}
 				<select name="{{element}}" id="{{element}}">
-					<option value="Lax"{% if get_config_value(element) == "Lax" %}selected{% endif %}>Lax</option>
-					<option value="Strict"{% if get_config_value(element) == "Strict" %}selected{% endif %}>Strict</option>
+					<option value="Lax"{% if get_config_value(element) == "Lax" %} selected{% endif %}>Lax</option>
+					<option value="Strict"{% if get_config_value(element) == "Strict" %} selected{% endif %}>Strict</option>
 				</select>
 			{% else %}
 				<input type="text" name="{{element}}" id="{{element}}" placeholder="{{element}}" value="{% if get_config_value(element) is not none %}{{get_config_value(element)}}{% else %}{% endif %}">
