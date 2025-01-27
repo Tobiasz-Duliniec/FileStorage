@@ -95,8 +95,12 @@ def admin():
                 flash(f'''An error has occured when updating your data. Is the data you provided correct? Make sure you have sent
                             all data for all fields. For numerical values (like MAX_FILENAME_LENGTH) value must be greater than 0.''', 'error')
         elif(request.form['action'] == 'register'):
-            username = request.form.get('username')
-            password = request.form.get('password', 'password')
+            username = request.form.get('username', None)
+            password = request.form.get('password', None)
+            if(username is None or password is None):
+                flash('Please input both username and password.', 'error')
+                config_data = funcs.get_configs()
+                return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))
             password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
             user_UUID = str(uuid.uuid4())
             permissions = request.form.get('permissions', '0')

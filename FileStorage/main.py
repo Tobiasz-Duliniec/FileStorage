@@ -334,14 +334,9 @@ def download_file_page():
                                                     FROM files
                                                     INNER JOIN users ON files.UUID=users.UUID
                                                     WHERE username=?;''', (username, )).fetchone()[0]
-    if(request.args.get('start') is not None):
-        try:
-            file_start = int(request.args.get('start'))
-            if(file_start < 0):
-                file_start = 0
-        except ValueError:
-            file_start = 0
-    else:
+    try:
+        file_start = int(request.args.get('start', 0))
+    except ValueError:
         file_start = 0
     files = get_file_list(username, file_start)
     return render_template("file_download.html", files = files, number_of_files = len(files), number_of_all_files = number_of_all_files)
