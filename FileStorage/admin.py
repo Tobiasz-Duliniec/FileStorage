@@ -81,6 +81,7 @@ def get_config_value():
 def admin():
     if(not is_admin(session.get('username'))):
         abort(404)
+    username = session.get('username')
     if(request.method == 'POST'):
         if(request.form['action'] == 'config'):
             new_config_data = dict(request.form)
@@ -91,13 +92,16 @@ def admin():
                 funcs.save_configs(new_config_data)
                 current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
                 flash('Config settings have been updated.', 'success')
+                current_app.logger.info(f'Config data succesfully updated by {username}.', {'log_type': 'config'})
             else:
                 flash(f'''An error has occured when updating your data. Is the data you provided correct? Make sure you have sent
                             all data for all fields. For numerical values (like MAX_FILENAME_LENGTH) value must be greater than 0.''', 'error')
+                current_app.logger.error(f'An error occured while updating config by {username}.', {'log_type': 'config'})
         elif(request.form['action'] == 'register'):
-            username = request.form.get('username', None)
+            new_account_username = request.form.get('username', None)
             password = request.form.get('password', None)
-            if(username is None or password is None):
+            if(new_account_username is None or password is None):
+                current_app.logger.error(f'Username and/or password was not provided during account creation initiated.', {'log_type': 'account'})
                 flash('Please input both username and password.', 'error')
                 config_data = funcs.get_configs()
                 return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))
@@ -107,10 +111,12 @@ def admin():
             with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
                 cur = conn.cursor()
                 try:
-                    cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password, user_UUID, permissions))
+                    cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (new_account_username, password, user_UUID, permissions))
                     flash('New account created.', 'success')
+                    current_app.logger.info(f'New account has been created: {new_account_username}', {'log_type': 'account'})
                 except sqlite3.IntegrityError as e:
                     flash(f'Account creation failed: {e}', 'error')
+                    current_app.logger.error(f'Account creation failed: {e}.', {'log_type': 'account'})
                 cur.close()
     
     config_data = funcs.get_configs()

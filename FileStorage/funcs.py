@@ -3,7 +3,9 @@ Different functions used by multiple files
 '''
 
 from bs4 import BeautifulSoup
+from flask import current_app
 import json
+import logging
 import os
 
 

@@ -2,10 +2,11 @@
 Main file for the website.
 '''
 
-from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
 import bcrypt
 import funcs
 import json
+import logging.config
 import os
 import sqlite3
 import uuid
@@ -14,9 +15,88 @@ from admin import admin_panel
 from errors import Errors
 
 
+class ConsoleFormatter(logging.Formatter):
+    def format(self, record):
+        if has_request_context():
+            record.ip = request.remote_addr
+            record.username = session.get('username')
+            record.method = request.method
+            record.url = request.url
+            record.status_code = request.status_code if hasattr(request, 'status_code') else None
+            record.log_type = record.args.get('log_type')
+        else:
+            record.ip = None
+            record.username = None
+            record.method = None
+            record.url = None
+            record.status_code = None
+            record.log_type = 'start up process'
+        return super().format(record)
+
+class JSONLinesFormatter(logging.Formatter):
+    def format(self, record):
+        if has_request_context():
+            username = session.get('username', None)
+            record.ip = '"' + request.remote_addr + '"'
+            record.username = '"' + username + '"' if username is not None else 'null'
+            record.method = '"' + request.method + '"'
+            record.url = '"' + request.url + '"'
+            record.status_code = request.status_code if hasattr(request, 'status_code') else 'null'
+            record.log_type = 'HTTP request'
+        else:
+            record.ip = 'null'
+            record.username = 'null'
+            record.method = 'null'
+            record.url = 'null'
+            record.status_code = 'null'
+            record.log_type = 'startup process'
+        return super().format(record)
+
+logging.config.dictConfig({
+    'version': 1,
+    'formatters': {
+        'default': {
+            '()': '__main__.ConsoleFormatter',
+            'format': '%(levelname)s | %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s | Log type: %(log_type)s | Message: %(message)s',
+            'datefmt': '%Y-%d-%m %H:%M:%S'
+        },
+        'JSON_Lines': {
+            '()': '__main__.JSONLinesFormatter',
+            'format': '{"levelname": "%(levelname)s", "time": %(asctime)s, "ip": %(ip)s, "username": %(username)s, "method": %(method)s, "url": %(url)s, "status code": %(status_code)s, "log_type": "%(log_type)s", "message": "%(message)s"}',
+            'datefmt': '"%Y-%d-%m %H:%M:%S"'
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'default'
+        },
+        'JSON_Lines_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'JSON_Lines',
+            'filename': 'logs.jsonl',
+            'encoding': 'UTF-8',
+            'maxBytes': 10 * 1024 * 1024 * 1024,
+            'backupCount': 10
+        }
+    },
+    'root': {
+        'handlers': ('console', 'JSON_Lines_file'),
+        'level': 'INFO'
+    }
+})
+
 app = Flask(__name__)
 app.register_blueprint(admin_panel)
 app.register_blueprint(Errors)
+logging.getLogger('werkzeug').disabled = True
+
+@app.after_request
+def http_request_logger(response):
+    request.status_code = response.status_code
+    app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
+    return response
 
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
@@ -32,6 +112,7 @@ def create_users_database() -> None:
     The users database will contain only admin account with the password and username "admin".
     It is recommended that the password is changed before putting the site to production.
     '''
+    app.logger.info('Creating users database.')
     password = bcrypt.hashpw('admin'.encode('utf-8'), app.config['GENSALT'])
     admin_UUID = str(uuid.uuid4())
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
@@ -43,7 +124,7 @@ def create_users_database() -> None:
         cur.execute('INSERT INTO users (UUID, username, password, permissions) VALUES (?, "admin", ?, 1)', (admin_UUID, password))
         cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
                                                                 publicFilename TEXT NOT NULL,
-                                                                UUID INTEGER NOT NULL UNIQUE,
+                                                                UUID TEXT NOT NULL UNIQUE,
                                                                 FOREIGN KEY(UUID) REFERENCES users(UUID));
                                                                 ''')
         cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
@@ -55,21 +136,28 @@ def create_users_database() -> None:
     admin_file_folder = os.path.join('files', admin_UUID)
     if(not os.path.isdir(admin_file_folder)):
         os.makedirs(admin_file_folder)
+    app.logger.info('Users database created.')
 
 def check_databases() -> None:
+    app.logger.info('Checking database.')
     if(not os.path.isfile(os.path.join('instance', 'users.db'))):
         create_users_database()
+    else:
+        app.logger.info('Database found.')
 
 def set_configs() -> None:
     '''
     Loads data from config file if it exists.
     If it doesn't, it generates one.
     '''
+    app.logger.info('Checking config settings.')
     if(os.path.isfile(os.path.join('instance', 'config.json'))):
+        app.logger.info('Config file found. Importing.')
         app.config.from_file(os.path.join('instance', 'config.json'), load = json.load)
         app.config['GENSALT'] = app.config['GENSALT'].encode('utf-8')
         app.config['SECRET_KEY'] = app.config['SECRET_KEY'].encode('utf-8')
     else:
+        app.logger.info('Config file not found: using default config settings.')
         app.config['BANNED_CHARACTERS'] = ['<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#']
         app.config['GENSALT'] = bcrypt.gensalt()
         app.config['MAX_FILE_SIZE_GB'] = 1
@@ -83,6 +171,7 @@ def set_configs() -> None:
         app.config['SESSION_COOKIE_SECURE'] = False
         funcs.save_configs(app.config)
     app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
+    app.logger.info('Config settings set up.')
 
 def convert_bytes_to_megabytes(size:int) -> float:
     return round((size / (1024 * 1024)), 3)
@@ -127,9 +216,11 @@ def upload_file_page():
         file = request.files['file']
         filename = file.filename
         if(filename == ''):
+            app.logger.info(f"{username} tried saving file but didn't send any: {filename}", {'log_type': 'file save'})
             flash('Failed to save the file: no file found.', 'error')
             return render_template('file_upload.html')
         if(not is_filename_legal(filename)):
+            app.logger.info(f'{username} tried saving file with an invalid filename: {filename}', {'log_type': 'file save'})
             flash('Invalid filename: filename contains illegal characters or is too long.', 'error')
             return render_template('file_upload.html')
         conn = sqlite3.connect(os.path.join('instance', 'users.db'))
@@ -141,6 +232,7 @@ def upload_file_page():
         if(no_of_files > 0):
             conn.commit()
             cur.close()
+            app.logger.info(f'{username} tried saving file with an existing filename: {filename}', {'log_type': 'file save'})
             flash("Couldn't save the file: file with such name already exists", 'error')
             return render_template('file_upload.html')
         uploader_UUID = cur.execute('''SELECT UUID
@@ -153,6 +245,7 @@ def upload_file_page():
         conn.commit()
         cur.close()
         conn.close()
+        app.logger.info(f'{username} has saved a new file on the server: {filename}', {'log_type': 'file save'})
         flash('File has been saved on the server.', 'success')
         return render_template('file_upload.html')
     return render_template('file_upload.html')
@@ -170,6 +263,7 @@ def unshare_file(file:str):
                                     (file, username)).fetchone()
         if(share_url is not None):
             cur.execute('DELETE FROM fileShares WHERE shareURL = ?', (share_url[0], ))
+            app.logger.info(f'{username} has stopped sharing {file}', {'log_type': 'file share'})
             flash('File unshared.', 'success')
         cur.close()
     return redirect(url_for('show_file_info', file = file))
@@ -188,7 +282,6 @@ def account_info():
             current_password = bcrypt.hashpw(current_password.encode('utf-8'), app.config['GENSALT'])
             with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
                 cur = conn.cursor()
-            
                 current_password_correct = (cur.execute('''
                             SELECT count(*)
                             FROM users
@@ -203,12 +296,15 @@ def account_info():
                                     AND password = ?''',
                                 (new_password, username, current_password))
                     flash('Password changed succesfully.', 'success')
+                    app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
                 else:
                     flash('Please input the correct current password', 'error')
+                    app.logger.info('Password change fail: incorrect current password.', {'log_type': 'account'})
                 cur.close()
                 conn.commit()
         else:
             flash('Please enter two matching passwords and your current password.', 'error')
+            app.logger.info('Password change fail: incorrect or no account data provided.', {'log_type': 'account'})
     return render_template('account.html', username = username)
 
 
@@ -221,12 +317,13 @@ def delete_file(file:str):
         with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
             cur = conn.cursor()
             cur.execute('PRAGMA foreign_keys = ON;')
-            cur.execute('''DELETE
-                    FROM files
-                    WHERE publicFilename = (SELECT publicFilename from files INNER JOIN users ON files.UUID=users.UUID
-                    WHERE publicFilename=? AND username=? LIMIT 1);''', (file, username))
+            user_UUID = cur.execute('SELECT UUID FROM users WHERE username=? LIMIT 1', (username, )).fetchone()[0]
+            internal_filename = cur.execute('SELECT internalFilename FROM files WHERE publicFilename=? AND UUID=? LIMIT 1', (file, user_UUID)).fetchone()[0]
+            cur.execute('DELETE FROM files WHERE publicFilename=? AND UUID=?', (file, user_UUID))
             conn.commit()
             cur.close()
+        os.remove(f'files/{user_UUID}/{internal_filename}')
+        app.logger.info(f'{username} has deleted a file: {file}', {'log_type': 'file deletion'})
         flash('File deleted succesfully', 'success')
     return redirect(url_for('download_file_page'))
 
@@ -245,12 +342,14 @@ def share_file(file):
                         )
         if(file_shared):
             flash('Error: this file is already shared!', 'error')
+            app.logger.info(f'{username} has tried to share an already shared file: {file}', {'log_type': 'file share'})
         else:
             internal_filename = cur.execute('''SELECT internalFilename
                                                 FROM files INNER JOIN users ON files.UUID = users.UUID
                                                 WHERE publicFilename = ? AND username = ?;''', (file, username)).fetchone()[0]
             share_url = str(uuid.uuid4())
             cur.execute('INSERT INTO fileShares VALUES (?, ?)', (internal_filename, share_url))
+            app.logger.info(f'{username} has shared a new file: {file}', {'log_type': 'file share'})
             flash(f'File shared! Share URL is: {request.url_root}shared_files/{share_url}', 'success')
         cur.close()
     return redirect(url_for('show_file_info', file = file))
@@ -286,6 +385,7 @@ def send_file(file:str):
             abort(404)
     
     if(os.path.isfile(os.path.join('files', user_UUID, internal_filename))):
+        app.logger.info(f'{username} downloaded a file: {file}', {'log_type': 'file download'})
         return send_from_directory(os.path.join('files', user_UUID), internal_filename, download_name = publicFilename, as_attachment = True)
     else:
         abort(404)
@@ -357,11 +457,13 @@ def login():
                                         AND password=?;''',
                               (username, password)).fetchone()
         if(user is None):
+            app.logger.info(f'Failed log in attempt as {username}.', {'log_type': 'log in attempt'})
             return render_template('login.html', success = False)
         cur.close()
         conn.close()
         session.permanent = True
         session['username'] = username
+        app.logger.info(f'Succesful log in attempt as {username}.', {'log_type': 'log in attempt'})
         return redirect('/')
     return render_template('login.html')
 
@@ -375,7 +477,9 @@ def index():
     return render_template('index.html')
 
 def start_website():
+    app.logger.info('Starting website.')
     if(not os.path.isdir('instance')):
+        app.logger.info('Instance folder not found. Creating.')
         os.mkdir('instance')
     set_configs()
     check_databases()
