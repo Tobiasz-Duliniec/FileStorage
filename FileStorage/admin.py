@@ -112,6 +112,7 @@ def admin():
                 cur = conn.cursor()
                 try:
                     cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (new_account_username, password, user_UUID, permissions))
+                    os.makedirs(os.path.join('files', user_UUID))
                     flash('New account created.', 'success')
                     current_app.logger.info(f'New account has been created: {new_account_username}', {'log_type': 'account'})
                 except sqlite3.IntegrityError as e:

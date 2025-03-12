@@ -23,6 +23,7 @@ class ConsoleFormatter(logging.Formatter):
             record.method = request.method
             record.url = request.url
             record.status_code = request.status_code if hasattr(request, 'status_code') else None
+            record.user_agent = request.user_agent
             record.log_type = record.args.get('log_type')
         else:
             record.ip = None
@@ -30,6 +31,7 @@ class ConsoleFormatter(logging.Formatter):
             record.method = None
             record.url = None
             record.status_code = None
+            record.user_agent = None
             record.log_type = 'start up process'
         return super().format(record)
 
@@ -42,6 +44,7 @@ class JSONLinesFormatter(logging.Formatter):
             record.method = '"' + request.method + '"'
             record.url = '"' + request.url + '"'
             record.status_code = request.status_code if hasattr(request, 'status_code') else 'null'
+            record.user_agent = request.user_agent
             record.log_type = 'HTTP request'
         else:
             record.ip = 'null'
@@ -49,6 +52,7 @@ class JSONLinesFormatter(logging.Formatter):
             record.method = 'null'
             record.url = 'null'
             record.status_code = 'null'
+            record.user_agent = 'null'
             record.log_type = 'startup process'
         return super().format(record)
 
@@ -57,12 +61,12 @@ logging.config.dictConfig({
     'formatters': {
         'default': {
             '()': '__main__.ConsoleFormatter',
-            'format': '%(levelname)s | %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s | Log type: %(log_type)s | Message: %(message)s',
+            'format': '%(levelname)s | Time: %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s | User agent: %(user_agent)s | Log type: %(log_type)s | Message: %(message)s',
             'datefmt': '%Y-%d-%m %H:%M:%S'
         },
         'JSON_Lines': {
             '()': '__main__.JSONLinesFormatter',
-            'format': '{"levelname": "%(levelname)s", "time": %(asctime)s, "ip": %(ip)s, "username": %(username)s, "method": %(method)s, "url": %(url)s, "status code": %(status_code)s, "log_type": "%(log_type)s", "message": "%(message)s"}',
+            'format': '{"levelname": "%(levelname)s", "time": %(asctime)s, "ip": %(ip)s, "username": %(username)s, "method": %(method)s, "url": %(url)s, "status_code": %(status_code)s, "user_agent": %(user_agent)s, "log_type": "%(log_type)s", "message": "%(message)s"}',
             'datefmt': '"%Y-%d-%m %H:%M:%S"'
         }
     },
@@ -95,6 +99,7 @@ logging.getLogger('werkzeug').disabled = True
 @app.after_request
 def http_request_logger(response):
     request.status_code = response.status_code
+    request.user_agent = request.headers.get('User-Agent')
     app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
     return response
 
@@ -417,8 +422,10 @@ def show_file_info(file:str):
         cur = conn.cursor()
         user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
         file = cur.execute('''SELECT publicFilename, files.internalFilename, shareURL
-                                        FROM files INNER JOIN users LEFT JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                        WHERE publicFilename=? and username=?;''',
+                                        FROM files
+                                        INNER JOIN users ON files.UUID=users.UUID
+                                        LEFT JOIN fileShares ON files.internalFilename=fileShares.internalFilename
+                                        WHERE publicFilename=? and username=?''',
                            (file, username)).fetchone()
         cur.close()
         file_info = (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))), file[2])
