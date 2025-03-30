@@ -77,6 +77,39 @@ def get_config_value():
         return prepare_configs(current_app.config.get(value_name, None))
     return {'get_config_value': get_value}
 
+def create_account(username:str, password:str) -> tuple:
+    if(username is None or password is None):
+        current_app.logger.error(f'Username and/or password was not provided during account creation.', {'log_type': 'account'})
+        return (False, 'Please input both username and password.')
+    password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
+    user_UUID = str(uuid.uuid4())
+    permissions = request.form.get('permissions', '0')
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+        cur = conn.cursor()
+        try:
+            cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password, user_UUID, permissions))
+            cur.close()
+            os.makedirs(os.path.join('files', user_UUID))
+            current_app.logger.info(f'New account has been created: {username}', {'log_type': 'account'})
+            return (True, 'New account created.')
+        except sqlite3.IntegrityError as e:
+            cur.close()
+            current_app.logger.error(f'Account creation failed: {e}.', {'log_type': 'account'})
+            return (False, f'Account creation failed: {e}')
+
+def update_configs(config_data:dict) -> tuple:
+            config_data = validate_new_data(config_data)
+            if(len(config_data) > 0):
+                current_app.config.from_mapping(config_data)
+                funcs.save_configs(config_data)
+                current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
+                current_app.logger.info('Config data succesfully updated.', {'log_type': 'config'})
+                return (True, 'Config settings have been updated.' )
+            else:
+                current_app.logger.error('An error occured while updating config.', {'log_type': 'config'})
+                return (False, '''An error has occured when updating your data. Is the data you provided correct? Make sure you have sent
+                            all data for all fields. For numerical values (like MAX_FILENAME_LENGTH) value must be greater than 0.''')
+
 @admin_panel.route('/admin', methods = ['GET', 'POST'])
 def admin():
     if(not is_admin(session.get('username'))):
@@ -86,39 +119,13 @@ def admin():
         if(request.form['action'] == 'config'):
             new_config_data = dict(request.form)
             new_config_data.pop('action', None)
-            new_config_data = validate_new_data(new_config_data)
-            if(len(new_config_data) > 0):
-                current_app.config.from_mapping(new_config_data)
-                funcs.save_configs(new_config_data)
-                current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
-                flash('Config settings have been updated.', 'success')
-                current_app.logger.info(f'Config data succesfully updated by {username}.', {'log_type': 'config'})
-            else:
-                flash(f'''An error has occured when updating your data. Is the data you provided correct? Make sure you have sent
-                            all data for all fields. For numerical values (like MAX_FILENAME_LENGTH) value must be greater than 0.''', 'error')
-                current_app.logger.error(f'An error occured while updating config by {username}.', {'log_type': 'config'})
+            config_update_status = update_configs(new_config_data)
+            flash(config_update_status[1], 'sucess') if config_update_status[0] else flash(config_update_status[1], 'error')
         elif(request.form['action'] == 'register'):
             new_account_username = request.form.get('username', None)
             password = request.form.get('password', None)
-            if(new_account_username is None or password is None):
-                current_app.logger.error(f'Username and/or password was not provided during account creation initiated.', {'log_type': 'account'})
-                flash('Please input both username and password.', 'error')
-                config_data = funcs.get_configs()
-                return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))
-            password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
-            user_UUID = str(uuid.uuid4())
-            permissions = request.form.get('permissions', '0')
-            with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-                cur = conn.cursor()
-                try:
-                    cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (new_account_username, password, user_UUID, permissions))
-                    os.makedirs(os.path.join('files', user_UUID))
-                    flash('New account created.', 'success')
-                    current_app.logger.info(f'New account has been created: {new_account_username}', {'log_type': 'account'})
-                except sqlite3.IntegrityError as e:
-                    flash(f'Account creation failed: {e}', 'error')
-                    current_app.logger.error(f'Account creation failed: {e}.', {'log_type': 'account'})
-                cur.close()
+            account_creation_status = create_account(new_account_username, password)
+            flash(account_creation_status[1], 'sucess') if account_creation_status[0] else flash(account_creation_status[1], 'error')
     
     config_data = funcs.get_configs()
     return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))

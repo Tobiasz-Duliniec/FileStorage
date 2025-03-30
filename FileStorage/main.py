@@ -340,10 +340,9 @@ def share_file(file):
     with sqlite3.connect(os.path.join('instance','users.db')) as conn:
         cur = conn.cursor()
         file_shared = bool(
-                                cur.execute('''SELECT count(*) FROM fileShares
-                                                WHERE internalFilename = (
-                                                SELECT internalFilename FROM files
-                                                WHERE publicFilename = ?);''', (file, )).fetchone()[0]
+                                cur.execute('''select count(*) from files
+                                                inner join users on files.UUID = users.UUID
+                                                where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
                         )
         if(file_shared):
             flash('Error: this file is already shared!', 'error')
