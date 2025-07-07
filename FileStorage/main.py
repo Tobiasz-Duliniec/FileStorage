@@ -221,7 +221,7 @@ def upload_file_page():
         file = request.files['file']
         filename = file.filename
         if(filename == ''):
-            app.logger.info(f"{username} tried saving file but didn't send any: {filename}", {'log_type': 'file save'})
+            app.logger.info(f"{username} tried saving file but didn't send any.", {'log_type': 'file save'})
             flash('Failed to save the file: no file found.', 'error')
             return render_template('file_upload.html')
         if(not is_filename_legal(filename)):
