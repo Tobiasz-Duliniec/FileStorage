@@ -39,12 +39,12 @@ class JSONLinesFormatter(logging.Formatter):
     def format(self, record):
         if has_request_context():
             username = session.get('username', None)
-            record.ip = '"' + request.remote_addr + '"'
-            record.username = '"' + username + '"' if username is not None else 'null'
-            record.method = '"' + request.method + '"'
-            record.url = '"' + request.url + '"'
+            record.ip = f'"{request.remote_addr}"'
+            record.username = f'"{username}"' if username is not None else 'null'
+            record.method = f'"{request.method}"'
+            record.url = f'"{request.url}"'
             record.status_code = request.status_code if hasattr(request, 'status_code') else 'null'
-            record.user_agent = request.user_agent
+            record.user_agent = f'"{request.user_agent}"'
             record.log_type = 'HTTP request'
         else:
             record.ip = 'null'
