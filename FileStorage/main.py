@@ -337,7 +337,6 @@ def share_file(file):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    print(username)
     with sqlite3.connect(os.path.join('instance','users.db')) as conn:
         cur = conn.cursor()
         file_shared = bool(
@@ -346,9 +345,6 @@ def share_file(file):
                             inner join users on files.UUID = users.UUID
                             where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
                         )
-                        #        cur.execute('''select count(*) from files
-                        #                        inner join users on files.UUID = users.UUID
-                        #                        where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
                         
                         
         if(file_shared):
