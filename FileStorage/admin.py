@@ -120,12 +120,12 @@ def admin():
             new_config_data = dict(request.form)
             new_config_data.pop('action', None)
             config_update_status = update_configs(new_config_data)
-            flash(config_update_status[1], 'sucess') if config_update_status[0] else flash(config_update_status[1], 'error')
+            flash(config_update_status[1], 'success') if config_update_status[0] else flash(config_update_status[1], 'error')
         elif(request.form['action'] == 'register'):
             new_account_username = request.form.get('username', None)
             password = request.form.get('password', None)
             account_creation_status = create_account(new_account_username, password)
-            flash(account_creation_status[1], 'sucess') if account_creation_status[0] else flash(account_creation_status[1], 'error')
+            flash(account_creation_status[1], 'success') if account_creation_status[0] else flash(account_creation_status[1], 'error')
     
     config_data = funcs.get_configs()
     return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))

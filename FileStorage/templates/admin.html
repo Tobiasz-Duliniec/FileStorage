@@ -6,6 +6,7 @@
 	{% include "status.html" %}
 	<h3>Create account</h3>
 	<form method="post" class="post_form">
+		<input type="hidden" = name="csrf_token" value="{{csrf_token()}}">
 		<input type="hidden" name="action" value="register">
 		<label for="username">Username:</label>
 		<input type="text" name="username" id="username" placeholder="username" required>
@@ -20,6 +21,7 @@
 	</form>
 	<h3>Change configuration settings</h3>
 	<form method="post" class="post_form">
+		<input type="hidden" = name="csrf_token" value="{{csrf_token()}}">
 		<input type="hidden" name="action" value="config">
 		{% for element in config_data %}
 			<label for={{element}}>{{element}}:</label>

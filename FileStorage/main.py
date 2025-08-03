@@ -3,6 +3,7 @@ Main file for the website.
 '''
 
 from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
+from flask_wtf.csrf import CSRFProtect
 import bcrypt
 import funcs
 import json
@@ -14,6 +15,8 @@ import uuid
 from admin import admin_panel
 from errors import Errors
 
+
+csrf = CSRFProtect()
 
 class ConsoleFormatter(logging.Formatter):
     def format(self, record):
@@ -95,6 +98,8 @@ app = Flask(__name__)
 app.register_blueprint(admin_panel)
 app.register_blueprint(Errors)
 logging.getLogger('werkzeug').disabled = True
+csrf.init_app(app)
+
 
 @app.after_request
 def http_request_logger(response):
