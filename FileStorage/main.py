@@ -337,13 +337,20 @@ def share_file(file):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
+    print(username)
     with sqlite3.connect(os.path.join('instance','users.db')) as conn:
         cur = conn.cursor()
         file_shared = bool(
-                                cur.execute('''select count(*) from files
-                                                inner join users on files.UUID = users.UUID
-                                                where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
+                        cur.execute('''select count(*) from fileShares
+                            left join files on files.internalFilename = fileShares.internalFilename
+                            inner join users on files.UUID = users.UUID
+                            where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
                         )
+                        #        cur.execute('''select count(*) from files
+                        #                        inner join users on files.UUID = users.UUID
+                        #                        where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
+                        
+                        
         if(file_shared):
             flash('Error: this file is already shared!', 'error')
             app.logger.info(f'{username} has tried to share an already shared file: {file}', {'log_type': 'file share'})
@@ -376,14 +383,16 @@ def send_file(file:str):
                                                                 AND username = ?;''',
                                                         (file, username)).fetchone()
             else:
-                internal_filename, publicFilename, user_UUID = cur.execute('''SELECT files.internalFilename, publicFilename, UUID
+                internal_filename, publicFilename, user_UUID = cur.execute('''SELECT files.internalFilename, publicFilename, users.UUID
                                                                 FROM fileShares
                                                                 INNER JOIN files
                                                                 ON fileShares.internalFilename = files.internalFilename
                                                                 INNER JOIN users
                                                                 ON files.UUID = users.UUID
                                                                 WHERE shareURL = ?;''',
-                                                        (file, )).fetchone()
+                                                       (file, )).fetchone()
+
+            
             cur.close()
         except TypeError:
             abort(404)
@@ -401,7 +410,10 @@ def show_shared_file_info(shareURL:str):
     username = session.get('username')
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
-        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
+        user_UUID = cur.execute('''SELECT users.UUID
+                                FROM fileShares INNER JOIN files on fileShares.internalFilename = files.internalFilename
+                                INNER JOIN users ON files.UUID = users.UUID
+                                WHERE shareURL=?;''', (shareURL, )).fetchone()[0]
         file_info = cur.execute('''SELECT publicFilename, files.internalFilename, username
                                         FROM files INNER JOIN users ON files.UUID=users.UUID
                                         INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
@@ -463,6 +475,8 @@ def login():
                                         AND password=?;''',
                               (username, password)).fetchone()
         if(user is None):
+            cur.close()
+            conn.close()
             app.logger.info(f'Failed log in attempt as {username}.', {'log_type': 'log in attempt'})
             return render_template('login.html', success = False)
         cur.close()
