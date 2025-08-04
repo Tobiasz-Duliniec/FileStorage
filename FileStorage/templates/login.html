@@ -9,7 +9,7 @@
 	</div>
 	{% endif %}
 	<form method="post" class="post_form">
-		<input type="hidden" = name="csrf_token" value="{{csrf_token()}}">
+		<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
 		<label for="username">Username:</label>
 		<input type="text" name="username" id="username" placeholder="username" required>
 		<label for="password">Password:</label>
