@@ -1,5 +1,5 @@
 '''
-File for admin functions.
+File for admin panel functionality.
 '''
 
 from bs4 import BeautifulSoup
@@ -103,7 +103,7 @@ def update_configs(config_data:dict) -> tuple:
                 current_app.config.from_mapping(config_data)
                 funcs.save_configs(config_data)
                 current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
-                current_app.logger.info('Config data succesfully updated.', {'log_type': 'config'})
+                current_app.logger.info('Config data successfully updated.', {'log_type': 'config'})
                 return (True, 'Config settings have been updated.' )
             else:
                 current_app.logger.error('An error occured while updating config.', {'log_type': 'config'})

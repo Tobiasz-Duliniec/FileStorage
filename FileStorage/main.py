@@ -305,7 +305,7 @@ def account_info():
                                     WHERE username = ?
                                     AND password = ?''',
                                 (new_password, username, current_password))
-                    flash('Password changed succesfully.', 'success')
+                    flash('Password changed successfully.', 'success')
                     app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
                 else:
                     flash('Please input the correct current password', 'error')
@@ -334,7 +334,7 @@ def delete_file(file:str):
             cur.close()
         os.remove(f'files/{user_UUID}/{internal_filename}')
         app.logger.info(f'{username} has deleted a file: {file}', {'log_type': 'file deletion'})
-        flash('File deleted succesfully', 'success')
+        flash('File deleted successfully', 'success')
     return redirect(url_for('download_file_page'))
 
 @app.route('/share/<file>', methods = ['POST'])
