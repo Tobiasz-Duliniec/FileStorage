@@ -64,8 +64,7 @@ def prepare_configs(element):
         return "".join(element)
     elif(isinstance(element, bytes)):
         return element.decode()
-    else:
-        return element
+    return element
 
 @admin_panel.app_context_processor
 def is_admin_jinja():

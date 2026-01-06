@@ -20,7 +20,7 @@ csrf = CSRFProtect()
 
 class ConsoleFormatter(logging.Formatter):
     def format(self, record):
-        if has_request_context():
+        if(has_request_context()):
             record.ip = request.remote_addr
             record.username = session.get('username')
             record.method = request.method
@@ -40,7 +40,7 @@ class ConsoleFormatter(logging.Formatter):
 
 class JSONLinesFormatter(logging.Formatter):
     def format(self, record):
-        if has_request_context():
+        if(has_request_context()):
             username = session.get('username', None)
             record.ip = f'"{request.remote_addr}"'
             record.username = f'"{username}"' if username is not None else 'null'
@@ -107,14 +107,6 @@ def http_request_logger(response):
     request.user_agent = request.headers.get('User-Agent')
     app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
     return response
-
-def is_filename_legal(filename:str) -> bool:
-    if(len(filename) > app.config['MAX_FILENAME_LENGTH']):
-        return False
-    for letter in filename:
-        if(letter in app.config['BANNED_CHARACTERS']):
-            return False
-    return True
 
 def create_users_database() -> None:
     '''
@@ -224,40 +216,8 @@ def upload_file_page():
     if(request.method == 'POST'):
         username = session.get('username')
         file = request.files['file']
-        filename = file.filename
-        if(filename == ''):
-            app.logger.info(f"{username} tried saving file but didn't send any.", {'log_type': 'file save'})
-            flash('Failed to save the file: no file found.', 'error')
-            return render_template('file_upload.html')
-        if(not is_filename_legal(filename)):
-            app.logger.info(f'{username} tried saving file with an invalid filename: {filename}', {'log_type': 'file save'})
-            flash('Invalid filename: filename contains illegal characters or is too long.', 'error')
-            return render_template('file_upload.html')
-        conn = sqlite3.connect(os.path.join('instance', 'users.db'))
-        cur = conn.cursor()
-        no_of_files = cur.execute('''SELECT COUNT(*)
-                                            FROM files INNER JOIN users ON users.UUID=files.UUID
-                                            WHERE publicFilename=? AND username=?;''',
-                                            (filename, username)).fetchone()[0]
-        if(no_of_files > 0):
-            conn.commit()
-            cur.close()
-            app.logger.info(f'{username} tried saving file with an existing filename: {filename}', {'log_type': 'file save'})
-            flash("Couldn't save the file: file with such name already exists", 'error')
-            return render_template('file_upload.html')
-        uploader_UUID = cur.execute('''SELECT UUID
-                                                FROM users
-                                                WHERE username=?;''',
-                                                (username, )).fetchone()[0]
-        internal_name = str(uuid.uuid4())
-        file.save(os.path.join('files', uploader_UUID, internal_name))
-        cur.execute('INSERT INTO files (publicFilename, internalFilename, UUID) VALUES (?, ?, ?);', (filename, internal_name, uploader_UUID))
-        conn.commit()
-        cur.close()
-        conn.close()
-        app.logger.info(f'{username} has saved a new file on the server: {filename}', {'log_type': 'file save'})
-        flash('File has been saved on the server.', 'success')
-        return render_template('file_upload.html')
+        status = funcs.save_file(file, username)
+        flash(status[1], 'success' if status[0] else 'error')
     return render_template('file_upload.html')
 
 @app.route('/unshare/<file>', methods = ['POST'])
@@ -265,17 +225,8 @@ def unshare_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        share_url = cur.execute('''SELECT shareURL
-                                    FROM files INNER JOIN users INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                    WHERE publicFilename=? AND username=?;''',
-                                    (file, username)).fetchone()
-        if(share_url is not None):
-            cur.execute('DELETE FROM fileShares WHERE shareURL = ?', (share_url[0], ))
-            app.logger.info(f'{username} has stopped sharing {file}', {'log_type': 'file share'})
-            flash('File unshared.', 'success')
-        cur.close()
+    status = funcs.unshare_file(file, username)
+    flash(status[1], 'success' if status[0] else 'error')
     return redirect(url_for('show_file_info', file = file))
 
 @app.route('/account', methods = ['GET', 'POST'])
@@ -287,34 +238,8 @@ def account_info():
         new_password = request.form.get('new_password', None)
         new_password_confirmation = request.form.get('new_password_confirmation', None)
         current_password = request.form.get('current_password', None)
-        if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
-            new_password = bcrypt.hashpw(new_password.encode('utf-8'), app.config['GENSALT'])
-            current_password = bcrypt.hashpw(current_password.encode('utf-8'), app.config['GENSALT'])
-            with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-                cur = conn.cursor()
-                current_password_correct = (cur.execute('''
-                            SELECT count(*)
-                            FROM users
-                            WHERE username = ?
-                            AND password = ?''',
-                            (username, current_password)).fetchone()[0]
-                            == 1)
-                if(current_password_correct):
-                    cur.execute('''UPDATE users
-                                    SET password = ?
-                                    WHERE username = ?
-                                    AND password = ?''',
-                                (new_password, username, current_password))
-                    flash('Password changed successfully.', 'success')
-                    app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
-                else:
-                    flash('Please input the correct current password', 'error')
-                    app.logger.info('Password change fail: incorrect current password.', {'log_type': 'account'})
-                cur.close()
-                conn.commit()
-        else:
-            flash('Please enter two matching passwords and your current password.', 'error')
-            app.logger.info('Password change fail: incorrect or no account data provided.', {'log_type': 'account'})
+        status = funcs.change_password(new_password, new_password_confirmation, current_password, username)
+        flash(status[1], 'success' if status[0] else 'error')
     return render_template('account.html', username = username)
 
 
@@ -324,17 +249,8 @@ def delete_file(file:str):
         abort(401)
     username = session.get('username')
     if(request.method == 'POST'):
-        with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-            cur = conn.cursor()
-            cur.execute('PRAGMA foreign_keys = ON;')
-            user_UUID = cur.execute('SELECT UUID FROM users WHERE username=? LIMIT 1', (username, )).fetchone()[0]
-            internal_filename = cur.execute('SELECT internalFilename FROM files WHERE publicFilename=? AND UUID=? LIMIT 1', (file, user_UUID)).fetchone()[0]
-            cur.execute('DELETE FROM files WHERE publicFilename=? AND UUID=?', (file, user_UUID))
-            conn.commit()
-            cur.close()
-        os.remove(f'files/{user_UUID}/{internal_filename}')
-        app.logger.info(f'{username} has deleted a file: {file}', {'log_type': 'file deletion'})
-        flash('File deleted successfully', 'success')
+        status = funcs.delete_file(file, username)
+        flash(status[1], 'success' if status[0] else 'error')
     return redirect(url_for('download_file_page'))
 
 @app.route('/share/<file>', methods = ['POST'])
@@ -342,32 +258,12 @@ def share_file(file):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    with sqlite3.connect(os.path.join('instance','users.db')) as conn:
-        cur = conn.cursor()
-        file_shared = bool(
-                        cur.execute('''select count(*) from fileShares
-                            left join files on files.internalFilename = fileShares.internalFilename
-                            inner join users on files.UUID = users.UUID
-                            where publicFilename=? and username=?;''', (file, username)).fetchone()[0]
-                        )
-                        
-                        
-        if(file_shared):
-            flash('Error: this file is already shared!', 'error')
-            app.logger.info(f'{username} has tried to share an already shared file: {file}', {'log_type': 'file share'})
-        else:
-            internal_filename = cur.execute('''SELECT internalFilename
-                                                FROM files INNER JOIN users ON files.UUID = users.UUID
-                                                WHERE publicFilename = ? AND username = ?;''', (file, username)).fetchone()[0]
-            share_url = str(uuid.uuid4())
-            cur.execute('INSERT INTO fileShares VALUES (?, ?)', (internal_filename, share_url))
-            app.logger.info(f'{username} has shared a new file: {file}', {'log_type': 'file share'})
-            flash(f'File shared! Share URL is: {request.url_root}shared_files/{share_url}', 'success')
-        cur.close()
+    status = funcs.share_file(file, username)
+    flash(status[1], 'success' if status[0] else 'error')
     return redirect(url_for('show_file_info', file = file))
 
-@app.route('/download/<file>')
-@app.route('/shared_file_download/<file>')
+@app.route('/download/<file>', methods = ['GET', 'POST'])
+@app.route('/shared_file_download/<file>', methods = ['GET', 'POST'])
 def send_file(file:str):
     if(not session.get('username')):
         return redirect('/login')
@@ -376,7 +272,7 @@ def send_file(file:str):
         cur = conn.cursor()
         try:
             if(request.path.startswith('/download/')):
-                internal_filename, publicFilename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, users.UUID
+                internal_filename, publicf_ilename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, users.UUID
                                                                 FROM users
                                                                 INNER JOIN files
                                                                 ON users.UUID = files.UUID
@@ -384,7 +280,7 @@ def send_file(file:str):
                                                                 AND username = ?;''',
                                                         (file, username)).fetchone()
             else:
-                internal_filename, publicFilename, user_UUID = cur.execute('''SELECT files.internalFilename, publicFilename, users.UUID
+                internal_filename, public_filename, user_UUID = cur.execute('''SELECT files.internalFilename, publicFilename, users.UUID
                                                                 FROM fileShares
                                                                 INNER JOIN files
                                                                 ON fileShares.internalFilename = files.internalFilename
@@ -392,15 +288,12 @@ def send_file(file:str):
                                                                 ON files.UUID = users.UUID
                                                                 WHERE shareURL = ?;''',
                                                        (file, )).fetchone()
-
-            
             cur.close()
         except TypeError:
             abort(404)
-    
     if(os.path.isfile(os.path.join('files', user_UUID, internal_filename))):
         app.logger.info(f'{username} downloaded a file: {file}', {'log_type': 'file download'})
-        return send_from_directory(os.path.join('files', user_UUID), internal_filename, download_name = publicFilename, as_attachment = True)
+        return send_from_directory(os.path.join('files', user_UUID), internal_filename, download_name = public_filename, as_attachment = True)
     else:
         abort(404)
 
@@ -484,7 +377,7 @@ def login():
         conn.close()
         session.permanent = True
         session['username'] = username
-        app.logger.info(f'Succesful log in attempt as {username}.', {'log_type': 'log in attempt'})
+        app.logger.info(f'Successful log in attempt as {username}.', {'log_type': 'log in attempt'})
         return redirect('/')
     return render_template('login.html')
 
