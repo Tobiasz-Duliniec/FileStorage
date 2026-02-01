@@ -49,11 +49,11 @@ def change_password(new_password:str | None, new_password_confirmation:str | Non
         return (False, 'Please enter two matching passwords and your current password.')
 
 def check_database() -> None:
-    app.logger.info('Checking database.')
+    current_app.logger.info('Checking database.')
     if(not os.path.isfile(os.path.join('instance', 'users.db'))):
         create_users_database()
     else:
-        app.logger.info('Database found.')
+        current_app.logger.info('Database found.')
 
 def delete_file(filename:str, username:str) -> tuple[bool, str]:
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
@@ -76,10 +76,10 @@ def get_file_list(username:str, file_start:int) -> dict:
                                             FROM files INNER JOIN users ON files.UUID=users.UUID
                                             WHERE username=? LIMIT ? OFFSET ?;''',
                                 (username,
-                                 app.config['MAX_FILES_PER_PAGE'],
+                                 current_app.config['MAX_FILES_PER_PAGE'],
                                 file_start)).fetchall()
         file_list = dict(
-            (file[0], funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
+            (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
                      for file in file_list)
         cur.close()
     return file_list

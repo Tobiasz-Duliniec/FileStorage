@@ -334,7 +334,7 @@ def start_website():
         from errors import Errors
         app.register_blueprint(admin_panel)
         app.register_blueprint(Errors)
-    funcs.check_databases()
+        funcs.check_database()
     app.run(host='0.0.0.0')
 
 if(__name__ == '__main__'):
