@@ -180,6 +180,3 @@ def validate_login_data(username:str|None, password:str|None) -> bool:
             return False
         current_app.logger.info(f'Successful log in attempt as {username}.', {'log_type': 'log in attempt'})
         return True
-
-
-

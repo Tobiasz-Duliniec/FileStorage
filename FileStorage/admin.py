@@ -70,12 +70,6 @@ def prepare_configs(element):
 def is_admin_jinja():
     return {'is_admin': is_admin(session.get('username'))}
 
-@admin_panel.app_context_processor
-def get_config_value():
-    def get_value(value_name):
-        return prepare_configs(current_app.config.get(value_name, None))
-    return {'get_config_value': get_value}
-
 def create_account(username:str, password:str, permissions:str) -> tuple[bool, str]:
     if(username is None or password is None or permissions is None):
         current_app.logger.error(f'Missing data during account creation.', {'log_type': 'account'})

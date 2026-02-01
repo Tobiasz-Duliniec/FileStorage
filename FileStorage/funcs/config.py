@@ -1,28 +1,9 @@
 from bs4 import BeautifulSoup
 from flask import current_app
+import bcrypt
 import json
 import os
 
-
-class ConfigData:
-    def __init__(self, config_name, config_type, config_value):
-        self.config_name = config_name
-        self.config_type = config_type
-        self.config_value = config_value
-    
-    def __str__(self):
-        return f'{self.config_name} | {self.config_type} | {self.config_value}'
-        
-def get_config_data():
-    config_data = []
-    with open(os.path.join(current_app.root_path, 'configurable_data.xml'), 'rt', encoding = 'UTF-8') as file:
-        parsed_file = BeautifulSoup(file, 'xml')
-        for element in parsed_file.find_all('config'):
-            config_name = element.find('name').text
-            config_type = element.find('type').text
-            config_value = current_app.config[config_name]
-            config_data.append(ConfigData(config_name, config_type, config_value))
-    return config_data
 
 def get_configurable_data_values() -> dict:
     config_data = {}
@@ -85,7 +66,7 @@ def set_configs() -> None:
         current_app.config['SESSION_COOKIE_HTTPONLY'] = True
         current_app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
         current_app.config['SESSION_COOKIE_SECURE'] = False
-        funcs.save_configs(app.config)
+        save_configs(current_app.config)
     current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
     current_app.logger.info('Config settings set up.')
 
