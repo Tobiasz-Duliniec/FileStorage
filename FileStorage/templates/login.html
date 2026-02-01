@@ -8,12 +8,12 @@
 		<p id="error">Log in failed: username and/or password is incorrect</p>
 	</div>
 	{% endif %}
-	<form method="post" class="post_form">
-		<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-		<label for="username">Username:</label>
-		<input type="text" name="username" id="username" placeholder="username" required>
-		<label for="password">Password:</label>
-		<input type="password" name="password" id="password" placeholder="password" required>
-		<input type="submit" value="Submit!" id="submit_button">
+	<form method="POST" class="post_form">
+		{{login_form.csrf_token}}
+		{{login_form.username.label}}
+		{{login_form.username()}}
+		{{login_form.password.label}}
+		{{login_form.password()}}
+		{{login_form.submit()}}
 	</form>
 {% endblock %}

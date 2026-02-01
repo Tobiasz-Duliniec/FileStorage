@@ -10,31 +10,37 @@
 			<p>File size: {{file[3]}} (megabytes)</p>
 			<p>Shared by: {{file[2]}}</p>
 			<form action="/shared_file_download/{{file[4]}}" method="get">
-				<input type="submit" value="Download file">
+				{{file_download_form.csrf_token}}
+				{{file_download_form.action()}}
+				{{file_download_form.submit_button()}}
 			</form>
 		{% else %}
 			<p>File name: {{file[0]}}</p>
 			<p>File size: {{file[1]}} (megabytes)</p>
 			<p>Status: {% if file[2] is none %}not shared{% else %}shared (share URL: {{request.url_root}}shared_files/{{file[2]}}){% endif %}</p>
 			<form action="/download/{{file[0]}}" method="post">
-				<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-				<input type="submit" value="Download file">
+				{{file_download_form.csrf_token}}
+				{{file_download_form.action()}}
+				{{file_download_form.submit_button()}}
 			</form>
 			{% if file[2] is none %}
 				<form action="/share/{{file[0]}}" method="post">
-					<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-					<input type="submit" value="Share file">
+				{{file_share_form.csrf_token}}
+				{{file_share_form.action()}}
+				{{file_share_form.submit_button()}}
 				</form>
 			{% else %}
 				<form action="/unshare/{{file[0]}}" method="post">
-					<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-					<input type="submit" value="Unshare file">
+				{{file_unshare_form.csrf_token}}
+				{{file_unshare_form.action()}}
+				{{file_unshare_form.submit_button()}}
 				</form>
 			{% endif %}
 				<form action="/delete/{{file[0]}}" method="post">
-					<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-					<input type="submit" value="Delete file">
-				</form>
+				{{file_delete_form.csrf_token}}
+				{{file_delete_form.action()}}
+				{{file_delete_form.submit_button()}}
+			</form>
 		{% endif %}
 	</div>
 {% endblock %}

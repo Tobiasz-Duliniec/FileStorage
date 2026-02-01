@@ -5,7 +5,8 @@ File for admin panel functionality.
 from bs4 import BeautifulSoup
 from flask import abort, Blueprint, current_app, flash, render_template, request, session
 import bcrypt
-import funcs
+import forms
+import funcs.config as config_funcs
 import json
 import os
 import sqlite3
@@ -14,15 +15,14 @@ import uuid
 
 admin_panel = Blueprint('administration', __name__)
 
-type_functions = {
-    'bool': bool,
-    'bytes': bytes,
-    'int': int,
-    'str': str,
-    'list': list
-}
-
 def validate_new_data(to_check) -> dict:
+    type_functions = {
+        'bool': bool,
+        'bytes': bytes,
+        'int': int,
+        'str': str,
+        'list': list
+    }
     converted_data = {}
     with open('configurable_data.xml', 'rt') as file:
         parsed_file = BeautifulSoup(file, 'xml')
@@ -76,13 +76,12 @@ def get_config_value():
         return prepare_configs(current_app.config.get(value_name, None))
     return {'get_config_value': get_value}
 
-def create_account(username:str, password:str) -> tuple:
-    if(username is None or password is None):
-        current_app.logger.error(f'Username and/or password was not provided during account creation.', {'log_type': 'account'})
-        return (False, 'Please input both username and password.')
+def create_account(username:str, password:str, permissions:str) -> tuple[bool, str]:
+    if(username is None or password is None or permissions is None):
+        current_app.logger.error(f'Missing data during account creation.', {'log_type': 'account'})
+        return (False, 'Please input username, password, and permissions.')
     password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
     user_UUID = str(uuid.uuid4())
-    permissions = request.form.get('permissions', '0')
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
         try:
@@ -96,11 +95,11 @@ def create_account(username:str, password:str) -> tuple:
             current_app.logger.error(f'Account creation failed: {e}.', {'log_type': 'account'})
             return (False, f'Account creation failed: {e}')
 
-def update_configs(config_data:dict) -> tuple:
+def update_configs(config_data:dict) -> tuple[bool, str]:
             config_data = validate_new_data(config_data)
             if(len(config_data) > 0):
                 current_app.config.from_mapping(config_data)
-                funcs.save_configs(config_data)
+                config_funcs.save_configs(config_data)
                 current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
                 current_app.logger.info('Config data successfully updated.', {'log_type': 'config'})
                 return (True, 'Config settings have been updated.' )
@@ -114,17 +113,17 @@ def admin():
     if(not is_admin(session.get('username'))):
         abort(404)
     username = session.get('username')
-    if(request.method == 'POST'):
-        if(request.form['action'] == 'config'):
-            new_config_data = dict(request.form)
-            new_config_data.pop('action', None)
-            config_update_status = update_configs(new_config_data)
-            flash(config_update_status[1], 'success') if config_update_status[0] else flash(config_update_status[1], 'error')
-        elif(request.form['action'] == 'register'):
-            new_account_username = request.form.get('username', None)
-            password = request.form.get('password', None)
-            account_creation_status = create_account(new_account_username, password)
-            flash(account_creation_status[1], 'success') if account_creation_status[0] else flash(account_creation_status[1], 'error')
-    
-    config_data = funcs.get_configs()
-    return render_template('admin.html', config_data = config_data, config_types = tuple(type_functions))
+    config_update_form = forms.AdminPanelConfigChangeForm(**config_funcs.get_configurable_data_values())
+    account_create_form = forms.AdminPanelAccountCreateForm()
+    if(account_create_form.validate_on_submit()):
+        new_account_username = account_create_form.data['username']
+        password = account_create_form.data['password']
+        permissions = account_create_form.data['permissions']
+        account_creation_status = create_account(new_account_username, password, permissions)
+        flash(account_creation_status[1], 'success' if account_creation_status[0] else 'error')
+    elif(config_update_form.validate_on_submit()):
+        new_config_data = config_update_form.data
+        new_config_data.pop('action', None)
+        status = update_configs(new_config_data)
+        flash(status[1], 'success' if status[0] else 'error')
+    return render_template('admin.html', account_create_form = account_create_form, config_update_form = config_update_form)

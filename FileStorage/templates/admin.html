@@ -6,39 +6,25 @@
 	{% include "status.html" %}
 	<h3>Create account</h3>
 	<form method="post" class="post_form">
-		<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-		<input type="hidden" name="action" value="register">
-		<label for="username">Username:</label>
-		<input type="text" name="username" id="username" placeholder="username" required>
-		<label for="password">Password:</label>
-		<input type="password" name="password" id="password" placeholder="password" required>
-		<label for="permissions">Permissions:</label>
-		<select id="permissions">
-			<option value="0">User</option>
-			<option value="1">Admin</option>
-		</select>
-		<input type="submit" value="Register new account">
+		{{account_create_form.csrf_token}}
+		{{account_create_form.username.label}}
+		{{account_create_form.username()}}
+		{{account_create_form.password.label}}
+		{{account_create_form.password()}}
+		{{account_create_form.permissions.label}}
+		{{account_create_form.permissions()}}
+		{{account_create_form.submit_button()}}
 	</form>
 	<h3>Change configuration settings</h3>
 	<form method="post" class="post_form">
-		<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-		<input type="hidden" name="action" value="config">
-		{% for element in config_data %}
-			<label for={{element}}>{{element}}:</label>
-			{% if config_data[element] == "bool" %}
-				<select name="{{element}}" id="{{element}}">
-					<option value="0"{% if not get_config_value(element) %} selected{% endif %}>False</option>
-					<option value="1"{% if get_config_value(element) %} selected{% endif %}>True</option>
-				</select>
-			{% elif element == "SESSION_COOKIE_SAMESITE" %}
-				<select name="{{element}}" id="{{element}}">
-					<option value="Lax"{% if get_config_value(element) == "Lax" %} selected{% endif %}>Lax</option>
-					<option value="Strict"{% if get_config_value(element) == "Strict" %} selected{% endif %}>Strict</option>
-				</select>
-			{% else %}
-				<input type="text" name="{{element}}" id="{{element}}" placeholder="{{element}}" value="{% if get_config_value(element) is not none %}{{get_config_value(element)}}{% else %}{% endif %}">
+		{{config_update_form.csrf_token}}
+		{{config_update_form.action()}}
+		{% for input in config_update_form %}
+			{% if input.type != 'HiddenField' and input.type != 'SubmitField' and input.type != 'CSRFTokenField' %}
+				{{input.label}}
+				{{input()}}
 			{% endif %}
 		{% endfor %}
-		<input type="submit" value="Save configs">
+		{{config_update_form.submit_button()}}
 	</form>
 {% endblock %}

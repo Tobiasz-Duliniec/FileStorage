@@ -3,20 +3,16 @@ Main file for the website.
 '''
 
 from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
-from flask_wtf.csrf import CSRFProtect
 import bcrypt
-import funcs
+import funcs.funcs as funcs
+import funcs.config as config_funcs
 import json
 import logging.config
 import os
+import pathlib
 import sqlite3
 import uuid
 
-from admin import admin_panel
-from errors import Errors
-
-
-csrf = CSRFProtect()
 
 class ConsoleFormatter(logging.Formatter):
     def format(self, record):
@@ -95,11 +91,7 @@ logging.config.dictConfig({
 })
 
 app = Flask(__name__)
-app.register_blueprint(admin_panel)
-app.register_blueprint(Errors)
 logging.getLogger('werkzeug').disabled = True
-csrf.init_app(app)
-
 
 @app.after_request
 def http_request_logger(response):
@@ -132,7 +124,6 @@ def create_users_database() -> None:
         cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
                                                                 shareURL TEXT UNIQUE,
                                                                 FOREIGN KEY(internalFilename) REFERENCES files(internalFilename) ON DELETE CASCADE);''')
-
         conn.commit()
         cur.close()
     admin_file_folder = os.path.join('files', admin_UUID)
@@ -146,34 +137,6 @@ def check_databases() -> None:
         create_users_database()
     else:
         app.logger.info('Database found.')
-
-def set_configs() -> None:
-    '''
-    Loads data from config file if it exists.
-    If it doesn't, it generates one.
-    '''
-    app.logger.info('Checking config settings.')
-    if(os.path.isfile(os.path.join('instance', 'config.json'))):
-        app.logger.info('Config file found. Importing.')
-        app.config.from_file(os.path.join('instance', 'config.json'), load = json.load)
-        app.config['GENSALT'] = app.config['GENSALT'].encode('utf-8')
-        app.config['SECRET_KEY'] = app.config['SECRET_KEY'].encode('utf-8')
-    else:
-        app.logger.info('Config file not found: using default config settings.')
-        app.config['BANNED_CHARACTERS'] = ['<', '>', '"', "'",  '\\', '/', ':', '|', '?', '*', '#']
-        app.config['GENSALT'] = bcrypt.gensalt()
-        app.config['MAX_FILE_SIZE_GB'] = 1
-        app.config['MAX_FILES_PER_PAGE'] = 30
-        app.config['MAX_FILENAME_LENGTH'] = 32
-        app.config['PERMANENT_SESSION_LIFETIME'] = 10800
-        app.config['SECRET_KEY'] = bcrypt.gensalt()
-        app.config['SEND_ROBOTS_TXT'] = False
-        app.config['SESSION_COOKIE_HTTPONLY'] = True
-        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-        app.config['SESSION_COOKIE_SECURE'] = False
-        funcs.save_configs(app.config)
-    app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
-    app.logger.info('Config settings set up.')
 
 def convert_bytes_to_megabytes(size:int) -> float:
     return round((size / (1024 * 1024)), 3)
@@ -213,12 +176,13 @@ def send_robots_txt():
 def upload_file_page():
     if(not session.get('username')):
         abort(401)
-    if(request.method == 'POST'):
+    file_upload_form = forms.FileUploadForm()
+    if(file_upload_form.validate_on_submit()):
         username = session.get('username')
-        file = request.files['file']
+        file = file_upload_form.data['file']
         status = funcs.save_file(file, username)
         flash(status[1], 'success' if status[0] else 'error')
-    return render_template('file_upload.html')
+    return render_template('file_upload.html', file_upload_form = file_upload_form)
 
 @app.route('/unshare/<file>', methods = ['POST'])
 def unshare_file(file:str):
@@ -234,14 +198,14 @@ def account_info():
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    if(request.method == 'POST'):
-        new_password = request.form.get('new_password', None)
-        new_password_confirmation = request.form.get('new_password_confirmation', None)
-        current_password = request.form.get('current_password', None)
+    password_reset_form = forms.PasswordResetForm()
+    if(password_reset_form.on_submit()):
+        current_password = password_reset_form.current_password.data
+        new_password = password_reset_form.new_password.data
+        new_password_confirmation = password_reset_form.confirm_password.data
         status = funcs.change_password(new_password, new_password_confirmation, current_password, username)
         flash(status[1], 'success' if status[0] else 'error')
-    return render_template('account.html', username = username)
-
+    return render_template('account.html', username = username, password_reset_form = password_reset_form)
 
 @app.route('/delete/<file>', methods = ['POST'])
 def delete_file(file:str):
@@ -272,7 +236,7 @@ def send_file(file:str):
         cur = conn.cursor()
         try:
             if(request.path.startswith('/download/')):
-                internal_filename, publicf_ilename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, users.UUID
+                internal_filename, public_filename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, users.UUID
                                                                 FROM users
                                                                 INNER JOIN files
                                                                 ON users.UUID = files.UUID
@@ -302,6 +266,7 @@ def show_shared_file_info(shareURL:str):
     if(not session.get('username')):
         abort(404)
     username = session.get('username')
+    file_download_form = forms.FileDownloadForm()
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
         user_UUID = cur.execute('''SELECT users.UUID
@@ -309,20 +274,24 @@ def show_shared_file_info(shareURL:str):
                                 INNER JOIN users ON files.UUID = users.UUID
                                 WHERE shareURL=?;''', (shareURL, )).fetchone()[0]
         file_info = cur.execute('''SELECT publicFilename, files.internalFilename, username
-                                        FROM files INNER JOIN users ON files.UUID=users.UUID
-                                        INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                        WHERE shareURL=?;''', (shareURL, )).fetchone()
+                                FROM files INNER JOIN users ON files.UUID=users.UUID
+                                INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
+                                WHERE shareURL=?;''', (shareURL, )).fetchone()
         cur.close()
         if(file_info is None):
             abort(404)
         file_info = file_info + (convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file_info[1]))), shareURL)
-    return render_template('files.html', file = file_info)
+    return render_template('files.html', file = file_info, file_download_form = file_download_form)
 
 @app.route('/files/<file>')
 def show_file_info(file:str):
     if(not session.get('username')):
         abort(404)
     username = session.get('username')
+    file_download_form = forms.FileDownloadForm()
+    file_delete_form = forms.FileDeleteForm()
+    file_share_form = forms.FileShareForm()
+    file_unshare_form = forms.FileUnshareForm()
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
         user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
@@ -334,7 +303,8 @@ def show_file_info(file:str):
                            (file, username)).fetchone()
         cur.close()
         file_info = (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))), file[2])
-    return render_template('files.html', file = file_info)
+    return render_template('files.html', file = file_info, file_download_form = file_download_form, file_delete_form = file_delete_form,
+                                                                   file_share_form = file_share_form, file_unshare_form = file_unshare_form)
 
 @app.route('/download')
 def download_file_page():
@@ -357,29 +327,17 @@ def download_file_page():
 def login():
     if(session.get('username')):
         return redirect('/')
-    if(request.method == 'POST'):
-        username = request.form.get('username')
-        password = request.form.get('password')
-        password = bcrypt.hashpw(password.encode('utf-8'), app.config['GENSALT'])
-        conn = sqlite3.connect(os.path.join('instance', 'users.db'))
-        cur = conn.cursor()
-        user = cur.execute('''SELECT username
-                                        FROM users
-                                        WHERE username=?
-                                        AND password=?;''',
-                              (username, password)).fetchone()
-        if(user is None):
-            cur.close()
-            conn.close()
-            app.logger.info(f'Failed log in attempt as {username}.', {'log_type': 'log in attempt'})
-            return render_template('login.html', success = False)
-        cur.close()
-        conn.close()
+    login_form = forms.LoginForm()
+    if(login_form.validate_on_submit()):
+        username = login_form.username.data
+        password = login_form.password.data
+        status = funcs.validate_login_data(username, password)
+        if(not status):
+            return render_template('login.html', login_form = login_form, success = False), 400
         session.permanent = True
         session['username'] = username
-        app.logger.info(f'Successful log in attempt as {username}.', {'log_type': 'log in attempt'})
         return redirect('/')
-    return render_template('login.html')
+    return render_template('login.html', login_form = login_form)
 
 @app.route('/logout')
 def logout():
@@ -395,7 +353,14 @@ def start_website():
     if(not os.path.isdir('instance')):
         app.logger.info('Instance folder not found. Creating.')
         os.mkdir('instance')
-    set_configs()
+    with app.app_context():
+        config_funcs.set_configs()
+        global forms
+        import forms
+        from admin import admin_panel
+        from errors import Errors
+        app.register_blueprint(admin_panel)
+        app.register_blueprint(Errors)
     check_databases()
     app.run(host='0.0.0.0')
 
