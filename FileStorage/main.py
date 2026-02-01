@@ -9,7 +9,6 @@ import funcs.config as config_funcs
 import json
 import logging.config
 import os
-import pathlib
 import sqlite3
 import uuid
 
@@ -130,32 +129,6 @@ def create_users_database() -> None:
     if(not os.path.isdir(admin_file_folder)):
         os.makedirs(admin_file_folder)
     app.logger.info('Users database created.')
-
-def check_databases() -> None:
-    app.logger.info('Checking database.')
-    if(not os.path.isfile(os.path.join('instance', 'users.db'))):
-        create_users_database()
-    else:
-        app.logger.info('Database found.')
-
-def convert_bytes_to_megabytes(size:int) -> float:
-    return round((size / (1024 * 1024)), 3)
-
-def get_file_list(username:str, file_start:int) -> dict:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
-        file_list = cur.execute('''SELECT publicFilename, internalFilename
-                                            FROM files INNER JOIN users ON files.UUID=users.UUID
-                                            WHERE username=? LIMIT ? OFFSET ?;''',
-                                (username,
-                                 app.config['MAX_FILES_PER_PAGE'],
-                                file_start)).fetchall()
-        file_list = dict(
-            (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
-                     for file in file_list)
-        cur.close()
-    return file_list
 
 @app.route('/favicon.ico')
 def send_favicon():
@@ -280,7 +253,7 @@ def show_shared_file_info(shareURL:str):
         cur.close()
         if(file_info is None):
             abort(404)
-        file_info = file_info + (convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file_info[1]))), shareURL)
+        file_info = file_info + (funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file_info[1]))), shareURL)
     return render_template('files.html', file = file_info, file_download_form = file_download_form)
 
 @app.route('/files/<file>')
@@ -302,7 +275,7 @@ def show_file_info(file:str):
                                         WHERE publicFilename=? and username=?''',
                            (file, username)).fetchone()
         cur.close()
-        file_info = (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))), file[2])
+        file_info = (file[0], funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))), file[2])
     return render_template('files.html', file = file_info, file_download_form = file_download_form, file_delete_form = file_delete_form,
                                                                    file_share_form = file_share_form, file_unshare_form = file_unshare_form)
 
@@ -320,7 +293,7 @@ def download_file_page():
         file_start = int(request.args.get('start', 0))
     except ValueError:
         file_start = 0
-    files = get_file_list(username, file_start)
+    files = funcs.get_file_list(username, file_start)
     return render_template("file_download.html", files = files, number_of_files = len(files), number_of_all_files = number_of_all_files)
 
 @app.route('/login', methods = ['GET', 'POST'])
@@ -361,7 +334,7 @@ def start_website():
         from errors import Errors
         app.register_blueprint(admin_panel)
         app.register_blueprint(Errors)
-    check_databases()
+    funcs.check_databases()
     app.run(host='0.0.0.0')
 
 if(__name__ == '__main__'):

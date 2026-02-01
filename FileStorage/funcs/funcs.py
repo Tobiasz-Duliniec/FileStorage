@@ -13,6 +13,9 @@ import uuid
 import werkzeug
 
 
+def convert_bytes_to_megabytes(size:int) -> float:
+    return round((size / (1024 * 1024)), 3)
+
 def change_password(new_password:str | None, new_password_confirmation:str | None, current_password:str | None, username:str) -> tuple[bool, str]:
     if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
         new_password = bcrypt.hashpw(new_password.encode('utf-8'), current_app.config['GENSALT'])
@@ -45,6 +48,13 @@ def change_password(new_password:str | None, new_password_confirmation:str | Non
         current_app.logger.info('Password change fail: incorrect or no account data provided.', {'log_type': 'account'})
         return (False, 'Please enter two matching passwords and your current password.')
 
+def check_database() -> None:
+    app.logger.info('Checking database.')
+    if(not os.path.isfile(os.path.join('instance', 'users.db'))):
+        create_users_database()
+    else:
+        app.logger.info('Database found.')
+
 def delete_file(filename:str, username:str) -> tuple[bool, str]:
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
@@ -57,6 +67,22 @@ def delete_file(filename:str, username:str) -> tuple[bool, str]:
     os.remove(f'files/{user_UUID}/{internal_filename}')
     current_app.logger.info(f'{username} has deleted a file: {filename}', {'log_type': 'file deletion'})
     return (True, 'File deleted successfully.')
+
+def get_file_list(username:str, file_start:int) -> dict:
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+        cur = conn.cursor()
+        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
+        file_list = cur.execute('''SELECT publicFilename, internalFilename
+                                            FROM files INNER JOIN users ON files.UUID=users.UUID
+                                            WHERE username=? LIMIT ? OFFSET ?;''',
+                                (username,
+                                 app.config['MAX_FILES_PER_PAGE'],
+                                file_start)).fetchall()
+        file_list = dict(
+            (file[0], funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
+                     for file in file_list)
+        cur.close()
+    return file_list
 
 def is_filename_legal(filename:str) -> bool:
     if(len(filename) > current_app.config['MAX_FILENAME_LENGTH']):
