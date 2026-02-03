@@ -93,7 +93,7 @@ def update_configs(config_data:dict) -> tuple[bool, str]:
             config_data = validate_new_data(config_data)
             if(len(config_data) > 0):
                 current_app.config.from_mapping(config_data)
-                config_funcs.save_configs(config_data)
+                config_funcs.save_configurable_data(config_data)
                 current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
                 current_app.logger.info('Config data successfully updated.', {'log_type': 'config'})
                 return (True, 'Config settings have been updated.' )

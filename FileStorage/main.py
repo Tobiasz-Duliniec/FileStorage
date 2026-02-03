@@ -327,7 +327,7 @@ def start_website():
         app.logger.info('Instance folder not found. Creating.')
         os.mkdir('instance')
     with app.app_context():
-        config_funcs.set_configs()
+        config_funcs.set_configurable_data()
         global forms
         import forms
         from admin import admin_panel

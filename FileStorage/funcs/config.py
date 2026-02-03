@@ -19,17 +19,7 @@ def get_configurable_data_values() -> dict:
             config_data[config_name] = config_value
     return config_data
 
-def get_configurable_data_types() -> dict:
-    config_data = {}
-    with open(os.path.join(current_app.root_path, 'configurable_data.xml'), 'rt', encoding = 'UTF-8') as file:
-        parsed_file = BeautifulSoup(file, 'xml')
-        for element in parsed_file.find_all('config'):
-            config_name = element.find('name').text
-            config_type = element.find('type').text
-            config_data[config_name] = config_type
-    return config_data
-
-def save_configs(configs:dict) -> None:
+def save_configurable_data(configs:dict) -> None:
     config_data = {}
     with open(os.path.join(current_app.root_path, 'configurable_data.xml'), 'rt', encoding = 'UTF-8') as file:
         parsed_file = BeautifulSoup(file, 'xml')
@@ -42,7 +32,7 @@ def save_configs(configs:dict) -> None:
     with open(os.path.join('instance', 'config.json'), 'wt', encoding='utf-8') as file:
         json.dump(config_data, file, indent = 1)
 
-def set_configs() -> None:
+def set_configurable_data() -> None:
     '''
     Loads data from config file if it exists.
     If it doesn't, it generates one.
@@ -66,7 +56,6 @@ def set_configs() -> None:
         current_app.config['SESSION_COOKIE_HTTPONLY'] = True
         current_app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
         current_app.config['SESSION_COOKIE_SECURE'] = False
-        save_configs(current_app.config)
+        save_configurable_data(current_app.config)
     current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
     current_app.logger.info('Config settings set up.')
-
