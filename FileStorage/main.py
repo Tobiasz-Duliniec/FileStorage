@@ -172,7 +172,7 @@ def account_info():
         abort(401)
     username = session.get('username')
     password_reset_form = forms.PasswordResetForm()
-    if(password_reset_form.on_submit()):
+    if(password_reset_form.is_submitted()):
         current_password = password_reset_form.current_password.data
         new_password = password_reset_form.new_password.data
         new_password_confirmation = password_reset_form.confirm_password.data
