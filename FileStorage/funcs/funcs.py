@@ -165,7 +165,7 @@ def unshare_file(filename:str, username:str) -> tuple[bool, str]:
         conn.commit()
         return (True, 'File unshared.')
 
-def validate_login_data(username:str|None, password:str|None) -> bool:
+def validate_login_data(username:str, password:str) -> bool:
     password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()

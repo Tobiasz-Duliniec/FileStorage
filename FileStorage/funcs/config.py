@@ -59,3 +59,48 @@ def set_configurable_data() -> None:
         save_configurable_data(current_app.config)
     current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
     current_app.logger.info('Config settings set up.')
+
+def update_configurable_data(config_data:dict) -> tuple[bool, str]:
+    config_data = validate_new_configurable_data(config_data)
+    if(len(config_data) > 0):
+        current_app.config.from_mapping(config_data)
+        save_configurable_data(config_data)
+        current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
+        current_app.logger.info('Config data successfully updated.', {'log_type': 'config'})
+        return (True, 'Config settings have been updated.' )
+    else:
+        current_app.logger.error('An error occured while updating config.', {'log_type': 'config'})
+        return (False, '''An error has occured when updating your data. Is the data you provided correct? Make sure you have sent
+                    all data for all fields. For numerical values (like MAX_FILENAME_LENGTH) value must be greater than 0.''')
+
+def validate_new_configurable_data(to_check) -> dict:
+    type_functions = {
+        'bool': bool,
+        'bytes': bytes,
+        'int': int,
+        'str': str,
+        'list': list
+    }
+    converted_data = {}
+    with open('configurable_data.xml', 'rt') as file:
+        parsed_file = BeautifulSoup(file, 'xml')
+        for element in parsed_file.find_all('config'):
+            config_name = element.find('name').text
+            config_type = element.find('type').text
+            try:
+                expected_type_func = type_functions[config_type]
+                if(config_type == 'bytes'):
+                    converted_data[config_name] = expected_type_func(to_check[config_name], encoding = 'utf-8')
+                elif(config_type == 'int'):
+                    converted_data[config_name] = expected_type_func(to_check[config_name])
+                    if(converted_data[config_name] <= 0):
+                        raise ValueError
+                elif(config_type == 'bool'):
+                    converted_data[config_name] = expected_type_func(int(to_check[config_name]))
+                else:
+                    converted_data[config_name] = expected_type_func(to_check[config_name])
+                    if(converted_data[config_name] == ''):
+                        raise ValueError
+            except ValueError:
+                return {}
+    return converted_data

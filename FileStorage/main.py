@@ -4,8 +4,9 @@ Main file for the website.
 
 from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
 import bcrypt
-import funcs.funcs as funcs
+import funcs.admin as admin_funcs
 import funcs.config as config_funcs
+import funcs.funcs as funcs
 import json
 import logging.config
 import os
@@ -22,7 +23,7 @@ class ConsoleFormatter(logging.Formatter):
             record.url = request.url
             record.status_code = request.status_code if hasattr(request, 'status_code') else None
             record.user_agent = request.user_agent
-            record.log_type = record.args.get('log_type')
+            record.log_type = record.args.get('log_type', None)
         else:
             record.ip = None
             record.username = None
@@ -89,7 +90,7 @@ logging.config.dictConfig({
     }
 })
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
 logging.getLogger('werkzeug').disabled = True
 
 @app.after_request
@@ -136,7 +137,7 @@ def send_favicon():
 
 @app.route('/style.css')
 def send_css():
-    return send_from_directory('static', 'style.css')
+    return send_from_directory('static', 'style.css', mimetype='text/css')
 
 @app.route('/robots.txt')
 def send_robots_txt():
@@ -296,6 +297,26 @@ def download_file_page():
     files = funcs.get_file_list(username, file_start)
     return render_template("file_download.html", files = files, number_of_files = len(files), number_of_all_files = number_of_all_files)
 
+@app.route('/admin', methods = ['GET', 'POST'])
+def admin():
+    if(not admin_funcs.is_admin(session.get('username'))):
+        abort(404)
+    username = session.get('username')
+    config_update_form = forms.AdminPanelConfigChangeForm(**config_funcs.get_configurable_data_values())
+    account_create_form = forms.AdminPanelAccountCreateForm()
+    if(account_create_form.validate_on_submit()):
+        new_account_username = account_create_form.data['username']
+        password = account_create_form.data['password']
+        permissions = account_create_form.data['permissions']
+        account_creation_status = admin_funcs.create_account(new_account_username, password, permissions)
+        flash(account_creation_status[1], 'success' if account_creation_status[0] else 'error')
+    elif(config_update_form.validate_on_submit()):
+        new_config_data = config_update_form.data
+        new_config_data.pop('action', None)
+        status = config_funcs.update_configurable_data(new_config_data)
+        flash(status[1], 'success' if status[0] else 'error')
+    return render_template('admin.html', account_create_form = account_create_form, config_update_form = config_update_form)
+
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
     if(session.get('username')):
@@ -330,9 +351,9 @@ def start_website():
         config_funcs.set_configurable_data()
         global forms
         import forms
-        from admin import admin_panel
+        from funcs.context_processor import context_processor_funcs_blueprint
         from errors import Errors
-        app.register_blueprint(admin_panel)
+        app.register_blueprint(context_processor_funcs_blueprint)
         app.register_blueprint(Errors)
         funcs.check_database()
     app.run(host='0.0.0.0')
