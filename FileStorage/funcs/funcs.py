@@ -39,7 +39,6 @@ def change_password(new_password:str | None, new_password_confirmation:str | Non
         current_app.logger.info('Password change fail: incorrect or no account data provided.', {'log_type': 'account'})
         return (False, 'Please enter two matching passwords and your current password.')
 
-
 def check_database() -> None:
     current_app.logger.info('Checking database.')
     if(not os.path.isfile(os.path.join('instance', 'users.db'))):

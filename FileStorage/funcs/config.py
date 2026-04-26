@@ -5,6 +5,7 @@ import funcs.cryptography as crypto_funcs
 import json
 import os
 
+
 class ConfigData:
     allowed_fields = {
         'StringField': StringField,

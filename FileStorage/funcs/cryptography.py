@@ -1,6 +1,7 @@
 from argon2 import PasswordHasher
 import secrets
 
+
 ph = PasswordHasher()
 
 def generate_secret() -> str:
@@ -14,4 +15,3 @@ def validate_password(hashed_password:str, password_to_check:str) -> bool:
         return ph.verify(hashed_password, password_to_check)
     except Exception as e:
         return False
-    
