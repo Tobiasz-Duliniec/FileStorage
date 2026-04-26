@@ -4,7 +4,6 @@ Various functions
 
 from flask import current_app, request
 import funcs.cryptography as crypto_funcs
-import bcrypt
 import json
 import logging
 import os
@@ -18,37 +17,28 @@ def convert_bytes_to_megabytes(size:int) -> float:
 
 def change_password(new_password:str | None, new_password_confirmation:str | None, current_password:str | None, username:str) -> tuple[bool, str]:
     if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
-        #new_password = bcrypt.hashpw(new_password.encode('utf-8'), current_app.config['GENSALT'])
-        #current_password = bcrypt.hashpw(current_password.encode('utf-8'), current_app.config['GENSALT'])
-        new_password = cryptofuncs.hash_password(new_password)
-        current_password = cryptofuncs.hash_password(current_password)
-        with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-            cur = conn.cursor()
-            current_password_correct = (cur.execute('''
-                        SELECT count(*)
-                        FROM users
-                        WHERE username = ?
-                        AND password = ?''',
-                        (username, current_password)).fetchone()[0]
-                        == 1)
-            if(current_password_correct):
+        new_password = crypto_funcs.hash_password(new_password)
+        current_password = current_password
+        current_password_correct = validate_login_data(username, current_password)
+        if(current_password_correct):
+            with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+                cur = conn.cursor()
                 cur.execute('''UPDATE users
                                 SET password = ?
                                 WHERE username = ?
-                                AND password = ?''',
-                            (new_password, username, current_password))
+                                ''',
+                            (new_password, username))
                 cur.close()
                 conn.commit()
-                current_app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
-                return (True, 'Password changed successfully.')
-            else:
-                cur.close()
-                conn.commit()
-                current_app.logger.info('Password change fail: incorrect current password.', {'log_type': 'account'})
-                return (False, 'Please input the correct current password')
+            current_app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
+            return (True, 'Password changed successfully.')
+        else:
+            current_app.logger.info('Password change fail: incorrect current password.', {'log_type': 'account'})
+            return (False, 'Please input the correct current password')
     else:
         current_app.logger.info('Password change fail: incorrect or no account data provided.', {'log_type': 'account'})
         return (False, 'Please enter two matching passwords and your current password.')
+
 
 def check_database() -> None:
     current_app.logger.info('Checking database.')
@@ -64,7 +54,6 @@ def create_users_database() -> None:
     It is recommended that the password is changed before putting the site to production.
     '''
     current_app.logger.info('Creating users database.')
-    #password = bcrypt.hashpw('admin'.encode('utf-8'), current_app.config['GENSALT'])
     password = crypto_funcs.hash_password('admin')
     admin_UUID = str(uuid.uuid4())
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 

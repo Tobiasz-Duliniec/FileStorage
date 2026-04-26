@@ -2,7 +2,6 @@ from flask import current_app
 from wtforms import BooleanField, IntegerField, SelectField, StringField
 from wtforms.validators import InputRequired
 import funcs.cryptography as crypto_funcs
-import bcrypt
 import json
 import os
 
