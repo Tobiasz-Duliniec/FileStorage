@@ -1,10 +1,10 @@
 from flask import current_app
 from wtforms import BooleanField, IntegerField, SelectField, StringField
 from wtforms.validators import InputRequired
+import funcs.cryptography as crypto_funcs
 import bcrypt
 import json
 import os
-
 
 class ConfigData:
     allowed_fields = {
@@ -54,7 +54,6 @@ def get_configurable_data_values(stringify=False) -> dict:
     '''
     Returns a dict of config_name:config_value pairs.
     Optional parameters stringify turns lists into strings with ''.join()
-    and bytes into string with .decode()
     '''
     config_data = {}
     with open(os.path.join('instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
@@ -65,8 +64,6 @@ def get_configurable_data_values(stringify=False) -> dict:
         if(stringify):
             if(isinstance(config_value, list)):
                 config_value = ''.join(config_value)
-            elif(isinstance(config_value, bytes)):
-                config_value = config_value.decode()
         config_data[config_name] = config_value
     return config_data
 
@@ -75,10 +72,7 @@ def save_configurable_data(configs:dict) -> None:
         raw_config_data = json.load(file)
     for element in raw_config_data['configs']:
         config_name = element['name']
-        if(isinstance(configs[config_name], bytes)):
-            element['value'] = configs[config_name].decode()
-        else:
-            element['value'] = configs[config_name]
+        element['value'] = configs[config_name]
     with open(os.path.join('instance', 'configurable_data.json'), 'wt', encoding='utf-8') as file:
         json.dump(raw_config_data, file, indent = 1)
 
@@ -94,13 +88,10 @@ def set_configurable_data() -> None:
         config_name = element['name']
         config_value = element['value']
         config_type = element['type']
+        if(config_value == '[secret_key]'):
+            config_value = crypto_funcs.generate_secret()
+            update_file = True
         new_config_data[config_name] = config_value
-        if(config_type == 'bytes'):
-            if(config_value == '[random]'):
-                new_config_data[config_name] = bcrypt.gensalt()
-                update_file = True
-                continue
-            new_config_data[config_name] = new_config_data[config_name].encode('utf-8')
     current_app.config.from_mapping(new_config_data)
     current_app.config['MAX_CONTENT_LENGTH'] = current_app.config['MAX_FILE_SIZE_GB'] * 1024 * 1024 * 1024
     current_app.logger.info('Config settings set up.')
@@ -124,7 +115,6 @@ def update_configurable_data(config_data:dict) -> tuple[bool, str]:
 def validate_new_configurable_data(to_check) -> dict:
     type_functions = {
         'bool': bool,
-        'bytes': bytes,
         'int': int,
         'str': str,
         'list': list
@@ -137,9 +127,7 @@ def validate_new_configurable_data(to_check) -> dict:
         config_type = element['type']
         try:
             expected_type_func = type_functions[config_type]
-            if(config_type == 'bytes'):
-                converted_data[config_name] = expected_type_func(to_check[config_name], encoding = 'utf-8')
-            elif(config_type == 'int'):
+            if(config_type == 'int'):
                 converted_data[config_name] = expected_type_func(to_check[config_name])
                 if(converted_data[config_name] <= 0):
                     raise ValueError

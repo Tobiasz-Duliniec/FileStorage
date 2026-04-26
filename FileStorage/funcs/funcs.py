@@ -3,6 +3,7 @@ Various functions
 '''
 
 from flask import current_app, request
+import funcs.cryptography as crypto_funcs
 import bcrypt
 import json
 import logging
@@ -17,8 +18,10 @@ def convert_bytes_to_megabytes(size:int) -> float:
 
 def change_password(new_password:str | None, new_password_confirmation:str | None, current_password:str | None, username:str) -> tuple[bool, str]:
     if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
-        new_password = bcrypt.hashpw(new_password.encode('utf-8'), current_app.config['GENSALT'])
-        current_password = bcrypt.hashpw(current_password.encode('utf-8'), current_app.config['GENSALT'])
+        #new_password = bcrypt.hashpw(new_password.encode('utf-8'), current_app.config['GENSALT'])
+        #current_password = bcrypt.hashpw(current_password.encode('utf-8'), current_app.config['GENSALT'])
+        new_password = cryptofuncs.hash_password(new_password)
+        current_password = cryptofuncs.hash_password(current_password)
         with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
             cur = conn.cursor()
             current_password_correct = (cur.execute('''
@@ -61,7 +64,8 @@ def create_users_database() -> None:
     It is recommended that the password is changed before putting the site to production.
     '''
     current_app.logger.info('Creating users database.')
-    password = bcrypt.hashpw('admin'.encode('utf-8'), current_app.config['GENSALT'])
+    #password = bcrypt.hashpw('admin'.encode('utf-8'), current_app.config['GENSALT'])
+    password = crypto_funcs.hash_password('admin')
     admin_UUID = str(uuid.uuid4())
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
         cur = conn.cursor()
@@ -196,17 +200,23 @@ def unshare_file(filename:str, username:str) -> tuple[bool, str]:
         return (True, 'File unshared.')
 
 def validate_login_data(username:str, password:str) -> bool:
-    password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
-        user = cur.execute('''SELECT username
-                                        FROM users
-                                        WHERE username=?
-                                        AND password=?;''',
-                              (username, password)).fetchone()
+        correct_password = cur.execute('''SELECT password
+                                            FROM users
+                                            WHERE username=?
+                                            LIMIT 1;''',
+                                  (username,)).fetchone()
         cur.close()
-        if(user is None):
+    if(correct_password is None):
+        crypto_funcs.validate_password('$argon2id$v=19$m=65536,t=3,p=4$lJRRaKsBXe1G+p9uRsjKXw$nJrqCkcUJLXc2doBxsu6tjWgoVdaZp1dsECZXmM5GBw', password)
+        # dummy hashing to protect against timing attacks
+        current_app.logger.info(f'Failed log in attempt as {username}.', {'log_type': 'log in attempt'})
+        return False
+    else:
+        if(crypto_funcs.validate_password(correct_password[0], password)):
+            current_app.logger.info(f'Successful log in attempt as {username}.', {'log_type': 'log in attempt'})
+            return True
+        else:
             current_app.logger.info(f'Failed log in attempt as {username}.', {'log_type': 'log in attempt'})
             return False
-        current_app.logger.info(f'Successful log in attempt as {username}.', {'log_type': 'log in attempt'})
-        return True

@@ -5,6 +5,7 @@ File for admin panel stuff.
 from flask import current_app
 import bcrypt
 import funcs.config as config_funcs
+import funcs.cryptography as crypto_funcs
 import funcs.funcs as funcs
 import os
 import sqlite3
@@ -15,7 +16,8 @@ def create_account(username:str, password:str, permissions:str) -> tuple[bool, s
     if(username is None or password is None or permissions is None):
         current_app.logger.error(f'Missing data during account creation.', {'log_type': 'account'})
         return (False, 'Please input username, password, and permissions.')
-    password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
+    #password = bcrypt.hashpw(password.encode('utf-8'), current_app.config['GENSALT'])
+    password = cryptofuncs.hash_password(password)
     user_UUID = str(uuid.uuid4())
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()

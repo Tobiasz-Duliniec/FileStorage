@@ -324,8 +324,8 @@ def start_website():
     if(not os.path.isdir('instance')):
         app.logger.info('Instance folder not found. Creating.')
         os.mkdir('instance')
+        shutil.copy(os.path.join('configurable_data.json'), os.path.join('instance', 'configurable_data.json'))
     with app.app_context():
-        shutil.copy(os.path.join(app.root_path, 'configurable_data.json'), os.path.join(app.root_path, 'instance', 'configurable_data.json'))
         config_funcs.set_configurable_data()
         global forms
         import forms

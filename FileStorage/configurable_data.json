@@ -22,15 +22,6 @@
    ]
   },
   {
-   "name": "GENSALT",
-   "type": "bytes",
-   "form": {
-    "type": "StringField",
-    "input_required": false
-   },
-   "value": "[random]"
-  },
-  {
    "name": "MAX_FILE_SIZE_GB",
    "type": "int",
    "form": {
@@ -68,12 +59,12 @@
   },
   {
    "name": "SECRET_KEY",
-   "type": "bytes",
+   "type": "str",
    "form": {
     "type": "StringField",
     "input_required": true
    },
-   "value": "[random]"
+   "value": "[secret_key]"
   },
   {
    "name": "SEND_ROBOTS_TXT",
