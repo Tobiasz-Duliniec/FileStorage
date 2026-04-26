@@ -15,7 +15,7 @@ def create_account(username:str, password:str, permissions:str) -> tuple[bool, s
     if(username is None or password is None or permissions is None):
         current_app.logger.error(f'Missing data during account creation.', {'log_type': 'account'})
         return (False, 'Please input username, password, and permissions.')
-    password = cryptofuncs.hash_password(password)
+    password = crypto_funcs.hash_password(password)
     user_UUID = str(uuid.uuid4())
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
