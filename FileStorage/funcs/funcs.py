@@ -2,7 +2,6 @@
 Various functions
 '''
 
-from bs4 import BeautifulSoup
 from flask import current_app, request
 import bcrypt
 import json

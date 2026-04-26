@@ -2,7 +2,6 @@
 File for admin panel stuff.
 '''
 
-from bs4 import BeautifulSoup
 from flask import current_app
 import bcrypt
 import funcs.config as config_funcs
