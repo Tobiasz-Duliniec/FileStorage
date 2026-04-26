@@ -10,6 +10,7 @@ import funcs.funcs as funcs
 import json
 import logging.config
 import os
+import shutil
 import sqlite3
 import uuid
 
@@ -23,7 +24,7 @@ class ConsoleFormatter(logging.Formatter):
             record.url = request.url
             record.status_code = request.status_code if hasattr(request, 'status_code') else None
             record.user_agent = request.user_agent
-            record.log_type = record.args.get('log_type', None)
+            record.log_type = 'An exception has occured' if record.levelno >= 40 else record.args.get('log_type', None) 
         else:
             record.ip = None
             record.username = None
@@ -44,7 +45,7 @@ class JSONLinesFormatter(logging.Formatter):
             record.url = f'"{request.url}"'
             record.status_code = request.status_code if hasattr(request, 'status_code') else 'null'
             record.user_agent = f'"{request.user_agent}"'
-            record.log_type = 'HTTP request'
+            record.log_type = 'An exception has occured' if record.levelno >= 40 else record.args.get('log_type', None)
         else:
             record.ip = 'null'
             record.username = 'null'
@@ -92,6 +93,8 @@ logging.config.dictConfig({
 
 app = Flask(__name__, static_folder=None)
 logging.getLogger('werkzeug').disabled = True
+app.jinja_env.lstrip_blocks = True
+app.jinja_env.trim_blocks = True
 
 @app.after_request
 def http_request_logger(response):
@@ -99,37 +102,6 @@ def http_request_logger(response):
     request.user_agent = request.headers.get('User-Agent')
     app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
     return response
-
-def create_users_database() -> None:
-    '''
-    Creates users database if it wasn't found during startup.
-    The users database will contain only admin account with the password and username "admin".
-    It is recommended that the password is changed before putting the site to production.
-    '''
-    app.logger.info('Creating users database.')
-    password = bcrypt.hashpw('admin'.encode('utf-8'), app.config['GENSALT'])
-    admin_UUID = str(uuid.uuid4())
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
-        cur = conn.cursor()
-        cur.execute('''CREATE TABLE users (UUID TEXT PRIMARY KEY,
-                                                                username TEXT NOT NULL UNIQUE,
-                                                                password BLOB NOT NULL,
-                                                                permissions INTEGER NOT NULL DEFAULT 0);''')
-        cur.execute('INSERT INTO users (UUID, username, password, permissions) VALUES (?, "admin", ?, 1)', (admin_UUID, password))
-        cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
-                                                                publicFilename TEXT NOT NULL,
-                                                                UUID TEXT NOT NULL UNIQUE,
-                                                                FOREIGN KEY(UUID) REFERENCES users(UUID));
-                                                                ''')
-        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
-                                                                shareURL TEXT UNIQUE,
-                                                                FOREIGN KEY(internalFilename) REFERENCES files(internalFilename) ON DELETE CASCADE);''')
-        conn.commit()
-        cur.close()
-    admin_file_folder = os.path.join('files', admin_UUID)
-    if(not os.path.isdir(admin_file_folder)):
-        os.makedirs(admin_file_folder)
-    app.logger.info('Users database created.')
 
 @app.route('/favicon.ico')
 def send_favicon():
@@ -299,10 +271,16 @@ def download_file_page():
 
 @app.route('/admin', methods = ['GET', 'POST'])
 def admin():
+    def fill_config_change_form():
+        for field in config_funcs.read_configurable_data_file():
+            setattr(forms.AdminPanelConfigChangeFormBase, field.config_name, field.create_field())
+    
+    
     if(not admin_funcs.is_admin(session.get('username'))):
         abort(404)
     username = session.get('username')
-    config_update_form = forms.AdminPanelConfigChangeForm(**config_funcs.get_configurable_data_values())
+    fill_config_change_form()
+    config_update_form = forms.AdminPanelConfigChangeFormBase(**config_funcs.get_configurable_data_values(stringify=True))
     account_create_form = forms.AdminPanelAccountCreateForm()
     if(account_create_form.validate_on_submit()):
         new_account_username = account_create_form.data['username']
@@ -348,6 +326,7 @@ def start_website():
         app.logger.info('Instance folder not found. Creating.')
         os.mkdir('instance')
     with app.app_context():
+        shutil.copy(os.path.join(app.root_path, 'configurable_data.json'), os.path.join(app.root_path, 'instance', 'configurable_data.json'))
         config_funcs.set_configurable_data()
         global forms
         import forms

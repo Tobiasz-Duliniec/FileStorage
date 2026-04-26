@@ -17,19 +17,8 @@ class AdminPanelAccountCreateForm(FlaskForm):
     permissions = SelectField('permissions', choices = [('0', 'User'), ('1', 'Admin')])
     submit_button = SubmitField('Register new account')
 
-class AdminPanelConfigChangeForm(FlaskForm):
+class AdminPanelConfigChangeFormBase(FlaskForm):
     action = HiddenField('action', default = 'config')
-    BANNED_CHARACTERS = StringField('BANNED_CHARACTERS')
-    GENSALT = StringField('GENSALT', validators = [InputRequired()])
-    MAX_FILE_SIZE_GB = IntegerField('MAX_FILE_SIZE', validators = [InputRequired()])
-    MAX_FILES_PER_PAGE = IntegerField('MAX_FILES_PER_PAGE', validators = [InputRequired()])
-    MAX_FILENAME_LENGTH = IntegerField('MAX_FILENAME_LENGTH', validators = [InputRequired()])
-    PERMANENT_SESSION_LIFETIME = IntegerField('PERMANENT_SESSION_LIFETIME', validators = [InputRequired()])
-    SECRET_KEY = StringField('SECRET_KEY', validators = [InputRequired()])
-    SEND_ROBOTS_TXT = BooleanField('SEND_ROBOTS_TXT')
-    SESSION_COOKIE_HTTPONLY = BooleanField('SESSION_COOKIE_HTTPONLY')
-    SESSION_COOKIE_SAMESITE = SelectField('SESSION_COOKIE_SAMESITE', choices = [('Lax', 'Lax'), ('Strict', 'Strict')])
-    SESSION_COOKIE_SECURE = BooleanField('SESSION_COOKIE_SECURE')
     submit_button = SubmitField('Save config')
             
 class FileDeleteForm(FlaskForm):
@@ -50,12 +39,12 @@ class FileUnshareForm(FlaskForm):
 
 class FileUploadForm(FlaskForm):
     file = FileField('file', validators = [FileRequired()])
-    submit_button = SubmitField('Submit')
+    submit_button = SubmitField('Upload')
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators = [InputRequired()])
     password = PasswordField('Password', validators = [InputRequired()])
-    submit = SubmitField('Submit')
+    submit = SubmitField('Login')
 
 class PasswordResetForm(FlaskForm):
     current_password = PasswordField('Current password', validators = [InputRequired()])

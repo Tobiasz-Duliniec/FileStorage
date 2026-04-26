@@ -55,6 +55,37 @@ def check_database() -> None:
     else:
         current_app.logger.info('Database found.')
 
+def create_users_database() -> None:
+    '''
+    Creates users database if it wasn't found during startup.
+    The users database will contain only admin account with the password and username "admin".
+    It is recommended that the password is changed before putting the site to production.
+    '''
+    current_app.logger.info('Creating users database.')
+    password = bcrypt.hashpw('admin'.encode('utf-8'), current_app.config['GENSALT'])
+    admin_UUID = str(uuid.uuid4())
+    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
+        cur = conn.cursor()
+        cur.execute('''CREATE TABLE users (UUID TEXT PRIMARY KEY,
+                                                                username TEXT NOT NULL UNIQUE,
+                                                                password BLOB NOT NULL,
+                                                                permissions INTEGER NOT NULL DEFAULT 0);''')
+        cur.execute('INSERT INTO users (UUID, username, password, permissions) VALUES (?, "admin", ?, 1)', (admin_UUID, password))
+        cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
+                                                                publicFilename TEXT NOT NULL,
+                                                                UUID TEXT NOT NULL UNIQUE,
+                                                                FOREIGN KEY(UUID) REFERENCES users(UUID));
+                                                                ''')
+        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
+                                                                shareURL TEXT UNIQUE,
+                                                                FOREIGN KEY(internalFilename) REFERENCES files(internalFilename) ON DELETE CASCADE);''')
+        conn.commit()
+        cur.close()
+    admin_file_folder = os.path.join('files', admin_UUID)
+    if(not os.path.isdir(admin_file_folder)):
+        os.makedirs(admin_file_folder)
+    current_app.logger.info('Users database created.')
+
 def delete_file(filename:str, username:str) -> tuple[bool, str]:
     with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
         cur = conn.cursor()
