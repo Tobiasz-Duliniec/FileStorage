@@ -2,7 +2,7 @@
 Main file for the website.
 '''
 
-from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
+from flask import Flask
 import classes.log_formatters
 import funcs.config as config_funcs
 import funcs.funcs as funcs
