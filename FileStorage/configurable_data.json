@@ -49,6 +49,15 @@
    "value": 32
   },
   {
+  "name": "PEPPER",
+  "type": "str",
+  "form": {
+   "type": "StringField",
+   "input_required": true
+  },
+  "value": "[secret_key]"
+  },
+  {
    "name": "PERMANENT_SESSION_LIFETIME",
    "type": "int",
    "form": {
