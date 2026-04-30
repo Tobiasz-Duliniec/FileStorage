@@ -21,12 +21,12 @@ def create_app():
         'formatters': {
             'default': {
                 '()': 'classes.log_formatters.ConsoleFormatter',
-                'format': '%(levelname)s | Time: %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s | User agent: %(user_agent)s | Log type: %(log_type)s | Message: %(message)s',
+                'format': '%(levelname)s | Time: %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s' \
+                '| User agent: %(user_agent)s | Log type: %(log_type)s | Message: %(message)s',
                 'datefmt': '%Y-%d-%m %H:%M:%S'
             },
             'JSON_Lines': {
                 '()': 'classes.log_formatters.JSONLinesFormatter',
-                'format': '{"levelname": "%(levelname)s", "time": %(asctime)s, "ip": %(ip)s, "username": %(username)s, "method": %(method)s, "url": %(url)s, "status_code": %(status_code)s, "user_agent": %(user_agent)s, "log_type": "%(log_type)s", "message": "%(message)s"}',
                 'datefmt': '"%Y-%d-%m %H:%M:%S"'
             }
         },
