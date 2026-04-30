@@ -1,36 +1,9 @@
 from flask import current_app
-from wtforms import BooleanField, IntegerField, SelectField, StringField
-from wtforms.validators import InputRequired
+from classes.ConfigData import ConfigData
 import funcs.cryptography as crypto_funcs
 import json
 import os
 
-
-class ConfigData:
-    allowed_fields = {
-        'StringField': StringField,
-        'IntegerField': IntegerField,
-        'BooleanField': BooleanField,
-        'SelectField': SelectField
-        }
-    
-    def __init__(self, config_name, config_type, config_value, config_form_type, config_form_choices, config_form_input_required):
-        self.config_name = config_name
-        self.config_type = config_type
-        self.config_value = config_value
-        self.config_form_type = config_form_type
-        self.config_form_choices = config_form_choices
-        self.config_form_input_required = config_form_input_required
-    
-    def __repr__(self):
-        return f'ConfigData({self.config_name=}, {self.config_type}, {self.config_value=})'
-    
-    def create_field(self):
-        if self.config_form_type == 'SelectField':
-            form = SelectField(self.config_name, choices = self.config_form_choices, validators=[InputRequired()] if self.config_form_input_required else [])
-        else:
-            form = self.allowed_fields[self.config_form_type](self.config_name, validators=[InputRequired()] if self.config_form_input_required else [])
-        return form
 
 def read_configurable_data_file() -> list[ConfigData]:
     config_data = []
@@ -46,8 +19,8 @@ def read_configurable_data_file() -> list[ConfigData]:
             config_choices = element['form']['choices']
         else:
             config_choices = None
-        dana = ConfigData(config_name, config_type, config_value, config_form_type, config_choices, config_form_input_required)
-        config_data.append(dana)
+        data = ConfigData(config_name, config_type, config_value, config_form_type, config_choices, config_form_input_required)
+        config_data.append(data)
     return config_data
 
 def get_configurable_data_values(stringify=False) -> dict:
@@ -60,7 +33,7 @@ def get_configurable_data_values(stringify=False) -> dict:
         raw_config_data = json.load(file)
     for element in raw_config_data['configs']:
         config_name = element['name']
-        config_value = current_app.config[config_name]
+        config_value = element['value']
         if(stringify):
             if(isinstance(config_value, list)):
                 config_value = ''.join(config_value)

@@ -5,6 +5,7 @@ Main file for the website.
 from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
 import funcs.admin as admin_funcs
 import funcs.config as config_funcs
+import funcs.database as database_funcs
 import funcs.funcs as funcs
 import json
 import logging.config
@@ -177,32 +178,13 @@ def send_file(file:str):
     if(not session.get('username')):
         return redirect('/login')
     username = session.get('username')
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        try:
-            if(request.path.startswith('/download/')):
-                internal_filename, public_filename, user_UUID = cur.execute('''SELECT internalfilename, publicFilename, users.UUID
-                                                                FROM users
-                                                                INNER JOIN files
-                                                                ON users.UUID = files.UUID
-                                                                WHERE publicFilename = ?
-                                                                AND username = ?;''',
-                                                        (file, username)).fetchone()
-            else:
-                internal_filename, public_filename, user_UUID = cur.execute('''SELECT files.internalFilename, publicFilename, users.UUID
-                                                                FROM fileShares
-                                                                INNER JOIN files
-                                                                ON fileShares.internalFilename = files.internalFilename
-                                                                INNER JOIN users
-                                                                ON files.UUID = users.UUID
-                                                                WHERE shareURL = ?;''',
-                                                       (file, )).fetchone()
-            cur.close()
-        except TypeError:
-            abort(404)
-    if(os.path.isfile(os.path.join('files', user_UUID, internal_filename))):
-        app.logger.info(f'{username} downloaded a file: {file}', {'log_type': 'file download'})
-        return send_from_directory(os.path.join('files', user_UUID), internal_filename, download_name = public_filename, as_attachment = True)
+    if(request.path.startswith('/download/')):
+        file = database_funcs.get_file_data_by_filename(file, username)
+    else:
+        file = database_funcs.get_file_data_by_share_url(file)
+    if(file is not None and os.path.isfile(os.path.join('files', file.owner_uuid, file.internal_filename))):
+        app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
+        return send_from_directory(os.path.join('files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
     else:
         abort(404)
 
@@ -212,21 +194,10 @@ def show_shared_file_info(shareURL:str):
         abort(404)
     username = session.get('username')
     file_download_form = forms.FileDownloadForm()
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        user_UUID = cur.execute('''SELECT users.UUID
-                                FROM fileShares INNER JOIN files on fileShares.internalFilename = files.internalFilename
-                                INNER JOIN users ON files.UUID = users.UUID
-                                WHERE shareURL=?;''', (shareURL, )).fetchone()[0]
-        file_info = cur.execute('''SELECT publicFilename, files.internalFilename, username
-                                FROM files INNER JOIN users ON files.UUID=users.UUID
-                                INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                WHERE shareURL=?;''', (shareURL, )).fetchone()
-        cur.close()
-        if(file_info is None):
-            abort(404)
-        file_info = file_info + (funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file_info[1]))), shareURL)
-    return render_template('files.html', file = file_info, file_download_form = file_download_form)
+    file = database_funcs.get_file_data_by_share_url(shareURL)
+    if file is None:
+        abort(404)
+    return render_template('files.html', file = file, file_download_form = file_download_form)
 
 @app.route('/files/<file>')
 def show_file_info(file:str):
@@ -237,18 +208,8 @@ def show_file_info(file:str):
     file_delete_form = forms.FileDeleteForm()
     file_share_form = forms.FileShareForm()
     file_unshare_form = forms.FileUnshareForm()
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
-        file = cur.execute('''SELECT publicFilename, files.internalFilename, shareURL
-                                        FROM files
-                                        INNER JOIN users ON files.UUID=users.UUID
-                                        LEFT JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                        WHERE publicFilename=? and username=?''',
-                           (file, username)).fetchone()
-        cur.close()
-        file_info = (file[0], funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))), file[2])
-    return render_template('files.html', file = file_info, file_download_form = file_download_form, file_delete_form = file_delete_form,
+    file = database_funcs.get_file_data_by_filename(file, username)
+    return render_template('files.html', file=file, file_download_form = file_download_form, file_delete_form = file_delete_form,
                                                                    file_share_form = file_share_form, file_unshare_form = file_unshare_form)
 
 @app.route('/download')
@@ -256,11 +217,7 @@ def download_file_page():
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        number_of_all_files = conn.execute('''SELECT count(*)
-                                                    FROM files
-                                                    INNER JOIN users ON files.UUID=users.UUID
-                                                    WHERE username=?;''', (username, )).fetchone()[0]
+    number_of_all_files = database_funcs.get_file_count_by_user(username)
     try:
         file_start = int(request.args.get('start', 0))
     except ValueError:
@@ -274,9 +231,9 @@ def admin():
         for field in config_funcs.read_configurable_data_file():
             setattr(forms.AdminPanelConfigChangeFormBase, field.config_name, field.create_field())
     
-    
     if(not admin_funcs.is_admin(session.get('username'))):
         abort(404)
+    
     username = session.get('username')
     fill_config_change_form()
     config_update_form = forms.AdminPanelConfigChangeFormBase(**config_funcs.get_configurable_data_values(stringify=True))

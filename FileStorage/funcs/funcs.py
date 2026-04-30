@@ -4,6 +4,7 @@ Various functions
 
 from flask import current_app, request
 import funcs.cryptography as crypto_funcs
+import funcs.database as database_funcs
 import json
 import logging
 import os
@@ -21,15 +22,7 @@ def change_password(new_password:str | None, new_password_confirmation:str | Non
         current_password = current_password
         current_password_correct = validate_login_data(username, current_password)
         if(current_password_correct):
-            with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-                cur = conn.cursor()
-                cur.execute('''UPDATE users
-                                SET password = ?
-                                WHERE username = ?
-                                ''',
-                            (new_password, username))
-                cur.close()
-                conn.commit()
+            database_funcs.change_password(username, new_password)
             current_app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
             return (True, 'Password changed successfully.')
         else:
@@ -53,57 +46,29 @@ def create_users_database() -> None:
     It is recommended that the password is changed before putting the site to production.
     '''
     current_app.logger.info('Creating users database.')
-    password = crypto_funcs.hash_password('admin')
     admin_UUID = str(uuid.uuid4())
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
-        cur = conn.cursor()
-        cur.execute('''CREATE TABLE users (UUID TEXT PRIMARY KEY,
-                                                                username TEXT NOT NULL UNIQUE,
-                                                                password BLOB NOT NULL,
-                                                                permissions INTEGER NOT NULL DEFAULT 0);''')
-        cur.execute('INSERT INTO users (UUID, username, password, permissions) VALUES (?, "admin", ?, 1)', (admin_UUID, password))
-        cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
-                                                                publicFilename TEXT NOT NULL,
-                                                                UUID TEXT NOT NULL UNIQUE,
-                                                                FOREIGN KEY(UUID) REFERENCES users(UUID));
-                                                                ''')
-        cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
-                                                                shareURL TEXT UNIQUE,
-                                                                FOREIGN KEY(internalFilename) REFERENCES files(internalFilename) ON DELETE CASCADE);''')
-        conn.commit()
-        cur.close()
+    password = crypto_funcs.hash_password('admin')
+    database_funcs.create_initial_database_tables(admin_UUID, password)
     admin_file_folder = os.path.join('files', admin_UUID)
     if(not os.path.isdir(admin_file_folder)):
         os.makedirs(admin_file_folder)
     current_app.logger.info('Users database created.')
 
-def delete_file(filename:str, username:str) -> tuple[bool, str]:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        cur.execute('PRAGMA foreign_keys = ON;')
-        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=? LIMIT 1', (username, )).fetchone()[0]
-        internal_filename = cur.execute('SELECT internalFilename FROM files WHERE publicFilename=? AND UUID=? LIMIT 1', (filename, user_UUID)).fetchone()[0]
-        cur.execute('DELETE FROM files WHERE publicFilename=? AND UUID=?', (filename, user_UUID))
-        conn.commit()
-        cur.close()
+def delete_file(public_filename:str, username:str) -> tuple[bool, str]:
+    user_UUID = database_funcs.get_UUID_by_username(username)
+    internal_filename = database_funcs.get_internal_filename_by_uuid(public_filename, user_UUID)
+    database_funcs.delete_file_from_database(public_filename, user_UUID)
     os.remove(f'files/{user_UUID}/{internal_filename}')
-    current_app.logger.info(f'{username} has deleted a file: {filename}', {'log_type': 'file deletion'})
+    current_app.logger.info(f'{username} has deleted a file: {public_filename}', {'log_type': 'file deletion'})
     return (True, 'File deleted successfully.')
 
 def get_file_list(username:str, file_start:int) -> dict:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        user_UUID = cur.execute('SELECT UUID FROM users WHERE username=?;', (username, )).fetchone()[0]
-        file_list = cur.execute('''SELECT publicFilename, internalFilename
-                                            FROM files INNER JOIN users ON files.UUID=users.UUID
-                                            WHERE username=? LIMIT ? OFFSET ?;''',
-                                (username,
-                                 current_app.config['MAX_FILES_PER_PAGE'],
-                                file_start)).fetchall()
-        file_list = dict(
-            (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
-                     for file in file_list)
-        cur.close()
+    user_UUID = database_funcs.get_UUID_by_username(username)
+    file_list = database_funcs.get_file_list(username, current_app.config['MAX_FILES_PER_PAGE'], file_start)
+    file_list = dict(
+        (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
+                    for file in file_list
+        )
     return file_list
 
 def is_filename_legal(filename:str) -> bool:
@@ -124,85 +89,48 @@ def save_file(file:werkzeug.datastructures.file_storage.FileStorage, username:st
     if(not is_filename_legal(filename)):
         current_app.logger.info(f'{username} tried saving file with an invalid filename: {filename}', {'log_type': 'file save'})
         return (False, 'Invalid filename: filename contains illegal characters or is too long.')
-    conn = sqlite3.connect(os.path.join('instance', 'users.db'))
-    cur = conn.cursor()
-    no_of_files = cur.execute('''SELECT COUNT(*)
-                                            FROM files INNER JOIN users ON users.UUID=files.UUID
-                                            WHERE publicFilename=? AND username=?;''',
-                                            (filename, username)).fetchone()[0]
-    if(no_of_files > 0):
+    is_filename_taken = database_funcs.test_for_public_filename(filename, username)
+    if(is_filename_taken):
         cur.close()
         current_app.logger.info(f'{username} tried saving file with an existing filename: {filename}', {'log_type': 'file save'})
         return (False, "Couldn't save the file: file with such name already exists.")
-    uploader_UUID = cur.execute('''SELECT UUID
-                                                FROM users
-                                                WHERE username=?;''',
-                                                (username, )).fetchone()[0]
-    internal_name = str(uuid.uuid4())
-    file.save(os.path.join('files', uploader_UUID, internal_name))
-    cur.execute('INSERT INTO files (publicFilename, internalFilename, UUID) VALUES (?, ?, ?);', (filename, internal_name, uploader_UUID))
-    conn.commit()
-    cur.close()
-    conn.close()
+    uploader_UUID = database_funcs.get_UUID_by_username(username)
+    internal_filename = str(uuid.uuid4())
+    database_funcs.add_file_to_database(filename, internal_filename, uploader_UUID)
+    file.save(os.path.join('files', uploader_UUID, internal_filename))
     current_app.logger.info(f'{username} has saved a new file on the server: {filename}', {'log_type': 'file save'})
     return (True, 'File has been saved on the server.')
 
 def share_file(filename:str, username:str) -> tuple[bool, str]:
-    with sqlite3.connect(os.path.join('instance','users.db')) as conn:
-        cur = conn.cursor()
-        file_shared = bool(
-                        cur.execute('''select count(*) from fileShares
-                            left join files on files.internalFilename = fileShares.internalFilename
-                            inner join users on files.UUID = users.UUID
-                            where publicFilename=? and username=?;''', (filename, username)).fetchone()[0]
-                        )
-        if(file_shared):
-            cur.close()
-            current_app.logger.info(f'{username} has tried to share an already shared file: {filename}', {'log_type': 'file share'})
-            return (False, 'Error: this file is already shared!')
-        else:
-            internal_filename = cur.execute('''SELECT internalFilename
-                                                FROM files INNER JOIN users ON files.UUID = users.UUID
-                                                WHERE publicFilename = ? AND username = ?;''', (filename, username)).fetchone()[0]
-            share_url = str(uuid.uuid4())
-            cur.execute('INSERT INTO fileShares VALUES (?, ?)', (internal_filename, share_url))
-            cur.close()
-            current_app.logger.info(f'{username} has shared a new file: {filename}', {'log_type': 'file share'})
-            return (True, f'File shared! Share URL is: {request.url_root}shared_files/{share_url}')
+    file_shared = database_funcs.test_for_shared_file(filename, username)
+    if(file_shared):
+        current_app.logger.info(f'{username} has tried to share an already shared file: {filename}', {'log_type': 'file share'})
+        return (False, 'Error: this file is already shared!')
+    else:
+        internal_filename = database_funcs.get_internal_filename_by_username(filename, username)
+        share_url = str(uuid.uuid4())
+        database_funcs.add_share_to_database(internal_filename, share_url)
+        current_app.logger.info(f'{username} has shared a new file: {filename}', {'log_type': 'file share'})
+        return (True, f'File shared! Share URL is: {request.url_root}shared_files/{share_url}')
 
 def unshare_file(filename:str, username:str) -> tuple[bool, str]:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        share_url = cur.execute('''SELECT shareURL
-                                    FROM files INNER JOIN users INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
-                                    WHERE publicFilename=? AND username=?;''',
-                                    (filename, username)).fetchone()
-        if(share_url is None):
-            current_app.logger.info(f'{username} tried to stop sharing a file that was not shared', {'log_type': {'file share'}})
-            cur.close()
-            return (False, 'File is not shared!')
-        cur.execute('DELETE FROM fileShares WHERE shareURL = ?', (share_url[0], ))
-        current_app.logger.info(f'{username} has stopped sharing {filename}', {'log_type': 'file share'})
-        cur.close()
-        conn.commit()
-        return (True, 'File unshared.')
+    share_url = database_funcs.get_share_url(filename, username)
+    if(share_url is None):
+        current_app.logger.info(f'{username} tried to stop sharing a file that was not shared', {'log_type': 'file share'})
+        return (False, 'File is not shared!')
+    database_funcs.delete_share(share_url[0])
+    current_app.logger.info(f'{username} has stopped sharing {filename}', {'log_type': 'file share'})
+    return (True, 'File unshared.')
 
 def validate_login_data(username:str, password:str) -> bool:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
-        cur = conn.cursor()
-        correct_password = cur.execute('''SELECT password
-                                            FROM users
-                                            WHERE username=?
-                                            LIMIT 1;''',
-                                  (username,)).fetchone()
-        cur.close()
+    correct_password = database_funcs.get_database_password(username)
     if(correct_password is None):
         crypto_funcs.validate_password('$argon2id$v=19$m=65536,t=3,p=4$lJRRaKsBXe1G+p9uRsjKXw$nJrqCkcUJLXc2doBxsu6tjWgoVdaZp1dsECZXmM5GBw', password)
         # dummy hashing to protect against timing attacks
         current_app.logger.info(f'Failed log in attempt as {username}.', {'log_type': 'log in attempt'})
         return False
     else:
-        if(crypto_funcs.validate_password(correct_password[0], password)):
+        if(crypto_funcs.validate_password(correct_password[0], password, username)):
             current_app.logger.info(f'Successful log in attempt as {username}.', {'log_type': 'log in attempt'})
             return True
         else:
