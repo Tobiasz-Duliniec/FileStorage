@@ -171,21 +171,25 @@ def share_file(file):
     flash(status[1], 'success' if status[0] else 'error')
     return redirect(url_for('show_file_info', file = file))
 
-@app.route('/download/<file>', methods = ['GET', 'POST'])
-@app.route('/shared_file_download/<file>', methods = ['GET', 'POST'])
+@app.route('/download/<file>', methods = ['POST'])
+@app.route('/shared_file_download/<file>', methods = ['POST'])
 def send_file(file:str):
     if(not session.get('username')):
         return redirect('/login')
     username = session.get('username')
-    if(request.path.startswith('/download/')):
-        file = database_funcs.get_file_data_by_filename(file, username)
+    file_download_form = forms.FileDownloadForm()
+    if(file_download_form.validate_on_submit()):
+        if(request.path.startswith('/download/')):
+            file = database_funcs.get_file_data_by_filename(file, username)
+        else:
+            file = database_funcs.get_file_data_by_share_url(file)
+        if(file is not None and os.path.isfile(os.path.join('files', file.owner_uuid, file.internal_filename))):
+            app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
+            return send_from_directory(os.path.join('files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
+        else:
+            abort(404)
     else:
-        file = database_funcs.get_file_data_by_share_url(file)
-    if(file is not None and os.path.isfile(os.path.join('files', file.owner_uuid, file.internal_filename))):
-        app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
-        return send_from_directory(os.path.join('files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
-    else:
-        abort(404)
+        abort(403)
 
 @app.route('/shared_files/<shareURL>')
 def show_shared_file_info(shareURL:str):

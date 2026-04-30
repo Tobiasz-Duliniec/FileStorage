@@ -23,6 +23,11 @@ def page_not_found(e):
     flash("Page Not Found: requested page couldn't be found.")
     return render_template('error.html'), 404
 
+@Errors.app_errorhandler(403)
+def page_not_found(e):
+    flash("Unauthorized: you don't have permissions to view this page.")
+    return render_template('error.html'), 404
+
 @Errors.app_errorhandler(401)
 def unauthorized(e):
     flash('Unauthorized: you need to log in to view this page.')
