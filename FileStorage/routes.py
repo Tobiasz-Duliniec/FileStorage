@@ -1,123 +1,39 @@
-'''
-Main file for the website.
-'''
-
-from flask import Flask, abort, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
+from flask import Blueprint, abort, current_app, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
+import classes.forms as forms
 import funcs.admin as admin_funcs
 import funcs.config as config_funcs
 import funcs.database as database_funcs
 import funcs.funcs as funcs
 import json
-import logging.config
 import os
-import shutil
 import uuid
 
 
-class ConsoleFormatter(logging.Formatter):
-    def format(self, record):
-        if(has_request_context()):
-            record.ip = request.remote_addr
-            record.username = session.get('username')
-            record.method = request.method
-            record.url = request.url
-            record.status_code = request.status_code if hasattr(request, 'status_code') else None
-            record.user_agent = request.user_agent
-            record.log_type = 'An exception has occured' if record.levelno >= 40 else record.args.get('log_type', None) 
-        else:
-            record.ip = None
-            record.username = None
-            record.method = None
-            record.url = None
-            record.status_code = None
-            record.user_agent = None
-            record.log_type = 'start up process'
-        return super().format(record)
+router = Blueprint('router', __name__)
 
-class JSONLinesFormatter(logging.Formatter):
-    def format(self, record):
-        if(has_request_context()):
-            username = session.get('username', None)
-            record.ip = f'"{request.remote_addr}"'
-            record.username = f'"{username}"' if username is not None else 'null'
-            record.method = f'"{request.method}"'
-            record.url = f'"{request.url}"'
-            record.status_code = request.status_code if hasattr(request, 'status_code') else 'null'
-            record.user_agent = f'"{request.user_agent}"'
-            record.log_type = 'An exception has occured' if record.levelno >= 40 else record.args.get('log_type', None)
-        else:
-            record.ip = 'null'
-            record.username = 'null'
-            record.method = 'null'
-            record.url = 'null'
-            record.status_code = 'null'
-            record.user_agent = 'null'
-            record.log_type = 'startup process'
-        return super().format(record)
-
-logging.config.dictConfig({
-    'version': 1,
-    'formatters': {
-        'default': {
-            '()': '__main__.ConsoleFormatter',
-            'format': '%(levelname)s | Time: %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s | User agent: %(user_agent)s | Log type: %(log_type)s | Message: %(message)s',
-            'datefmt': '%Y-%d-%m %H:%M:%S'
-        },
-        'JSON_Lines': {
-            '()': '__main__.JSONLinesFormatter',
-            'format': '{"levelname": "%(levelname)s", "time": %(asctime)s, "ip": %(ip)s, "username": %(username)s, "method": %(method)s, "url": %(url)s, "status_code": %(status_code)s, "user_agent": %(user_agent)s, "log_type": "%(log_type)s", "message": "%(message)s"}',
-            'datefmt': '"%Y-%d-%m %H:%M:%S"'
-        }
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://sys.stdout',
-            'formatter': 'default'
-        },
-        'JSON_Lines_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'formatter': 'JSON_Lines',
-            'filename': 'logs.jsonl',
-            'encoding': 'UTF-8',
-            'maxBytes': 10 * 1024 * 1024 * 1024,
-            'backupCount': 10
-        }
-    },
-    'root': {
-        'handlers': ('console', 'JSON_Lines_file'),
-        'level': 'INFO'
-    }
-})
-
-app = Flask(__name__, static_folder=None)
-logging.getLogger('werkzeug').disabled = True
-app.jinja_env.lstrip_blocks = True
-app.jinja_env.trim_blocks = True
-
-@app.after_request
+@router.after_request
 def http_request_logger(response):
     request.status_code = response.status_code
     request.user_agent = request.headers.get('User-Agent')
-    app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
+    current_app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
     return response
 
-@app.route('/favicon.ico')
+@router.route('/favicon.ico')
 def send_favicon():
     return send_from_directory('static', 'favicon.ico')
 
-@app.route('/style.css')
+@router.route('/style.css')
 def send_css():
     return send_from_directory('static', 'style.css', mimetype='text/css')
 
-@app.route('/robots.txt')
+@router.route('/robots.txt')
 def send_robots_txt():
-    if(app.config['SEND_ROBOTS_TXT']):
+    if(current_app.config['SEND_ROBOTS_TXT']):
         return send_from_directory('static', 'robots.txt')
     else:
         abort(404)
 
-@app.route('/upload', methods = ['GET', 'POST'])
+@router.route('/upload', methods = ['GET', 'POST'])
 def upload_file_page():
     if(not session.get('username')):
         abort(401)
@@ -129,16 +45,16 @@ def upload_file_page():
         flash(status[1], 'success' if status[0] else 'error')
     return render_template('file_upload.html', file_upload_form = file_upload_form)
 
-@app.route('/unshare/<file>', methods = ['POST'])
+@router.route('/unshare/<file>', methods = ['POST'])
 def unshare_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
     status = funcs.unshare_file(file, username)
     flash(status[1], 'success' if status[0] else 'error')
-    return redirect(url_for('show_file_info', file = file))
+    return redirect(url_for('router.show_file_info', file = file))
 
-@app.route('/account', methods = ['GET', 'POST'])
+@router.route('/account', methods = ['GET', 'POST'])
 def account_info():
     if(not session.get('username')):
         abort(401)
@@ -152,7 +68,7 @@ def account_info():
         flash(status[1], 'success' if status[0] else 'error')
     return render_template('account.html', username = username, password_reset_form = password_reset_form)
 
-@app.route('/delete/<file>', methods = ['POST'])
+@router.route('/delete/<file>', methods = ['POST'])
 def delete_file(file:str):
     if(not session.get('username')):
         abort(401)
@@ -160,19 +76,19 @@ def delete_file(file:str):
     if(request.method == 'POST'):
         status = funcs.delete_file(file, username)
         flash(status[1], 'success' if status[0] else 'error')
-    return redirect(url_for('download_file_page'))
+    return redirect(url_for('router.download_file_page'))
 
-@app.route('/share/<file>', methods = ['POST'])
+@router.route('/share/<file>', methods = ['POST'])
 def share_file(file):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
     status = funcs.share_file(file, username)
     flash(status[1], 'success' if status[0] else 'error')
-    return redirect(url_for('show_file_info', file = file))
+    return redirect(url_for('router.show_file_info', file = file))
 
-@app.route('/download/<file>', methods = ['POST'])
-@app.route('/shared_file_download/<file>', methods = ['POST'])
+@router.route('/download/<file>', methods = ['POST'])
+@router.route('/shared_file_download/<file>', methods = ['POST'])
 def send_file(file:str):
     if(not session.get('username')):
         return redirect('/login')
@@ -184,14 +100,14 @@ def send_file(file:str):
         else:
             file = database_funcs.get_file_data_by_share_url(file)
         if(file is not None and os.path.isfile(os.path.join('files', file.owner_uuid, file.internal_filename))):
-            app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
+            current_app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
             return send_from_directory(os.path.join('files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
         else:
             abort(404)
     else:
         abort(403)
 
-@app.route('/shared_files/<shareURL>')
+@router.route('/shared_files/<shareURL>')
 def show_shared_file_info(shareURL:str):
     if(not session.get('username')):
         abort(404)
@@ -202,7 +118,7 @@ def show_shared_file_info(shareURL:str):
         abort(404)
     return render_template('files.html', file = file, file_download_form = file_download_form)
 
-@app.route('/files/<file>')
+@router.route('/files/<file>')
 def show_file_info(file:str):
     if(not session.get('username')):
         abort(404)
@@ -215,7 +131,7 @@ def show_file_info(file:str):
     return render_template('files.html', file=file, file_download_form = file_download_form, file_delete_form = file_delete_form,
                                                                    file_share_form = file_share_form, file_unshare_form = file_unshare_form)
 
-@app.route('/download')
+@router.route('/download')
 def download_file_page():
     if(not session.get('username')):
         abort(401)
@@ -228,7 +144,7 @@ def download_file_page():
     files = funcs.get_file_list(username, file_start)
     return render_template("file_download.html", files = files, number_of_files = len(files), number_of_all_files = number_of_all_files)
 
-@app.route('/admin', methods = ['GET', 'POST'])
+@router.route('/admin', methods = ['GET', 'POST'])
 def admin():
     def fill_config_change_form():
         for field in config_funcs.read_configurable_data_file():
@@ -254,7 +170,7 @@ def admin():
         flash(status[1], 'success' if status[0] else 'error')
     return render_template('admin.html', account_create_form = account_create_form, config_update_form = config_update_form)
 
-@app.route('/login', methods = ['GET', 'POST'])
+@router.route('/login', methods = ['GET', 'POST'])
 def login():
     if(session.get('username')):
         return redirect('/')
@@ -270,32 +186,11 @@ def login():
         return redirect('/')
     return render_template('login.html', login_form = login_form)
 
-@app.route('/logout')
+@router.route('/logout')
 def logout():
     session.pop('username', None)
     return redirect('/')
 
-@app.route('/')
+@router.route('/')
 def index():
     return render_template('index.html')
-
-def start_website():
-    app.logger.info('Starting website.')
-    if(not os.path.isdir('instance')):
-        app.logger.info('Instance folder not found. Creating.')
-        os.mkdir('instance')
-        shutil.copy(os.path.join('configurable_data.json'), os.path.join('instance', 'configurable_data.json'))
-    with app.app_context():
-        config_funcs.set_configurable_data()
-        global forms
-        import forms
-        from funcs.context_processor import context_processor_funcs_blueprint
-        from errors import Errors
-        app.register_blueprint(context_processor_funcs_blueprint)
-        app.register_blueprint(Errors)
-        funcs.check_database()
-    app.run(host='0.0.0.0')
-
-if(__name__ == '__main__'):
-    start_website()
-    

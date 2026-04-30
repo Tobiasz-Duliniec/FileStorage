@@ -6,7 +6,6 @@ from flask import current_app, request
 import funcs.cryptography as crypto_funcs
 import funcs.database as database_funcs
 import json
-import logging
 import os
 import uuid
 import werkzeug
@@ -21,7 +20,7 @@ def change_password(new_password:str | None, new_password_confirmation:str | Non
         current_password = current_password
         current_password_correct = validate_login_data(username, current_password)
         if(current_password_correct):
-            database_funcs.change_password(username, new_password)
+            database_funcs.change_database_password(username, new_password)
             current_app.logger.info(f'{username} has changed their password.', {'log_type': 'account'})
             return (True, 'Password changed successfully.')
         else:

@@ -1,6 +1,7 @@
 '''
 Database querying functions
 '''
+
 from classes.File import File
 from flask import current_app
 import os
@@ -14,11 +15,11 @@ def add_account_to_database(username:str, password_hash:str, user_UUID:str, perm
             cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password_hash, user_UUID, permissions))
             cur.close()
             conn.commit()
-            current_app.logger.info(f'New account has been created: {username}', {'log_type': 'account'})
+            current_app.logger.info(f'New account has been added to database: {username}', {'log_type': 'database'})
             return (True, 'New account has been added to database')
         except sqlite3.IntegrityError as e:
             cur.close()
-            current_app.logger.error(f'An error has occured while adding account {username} to database: {e}.', {'log_type': 'account'})
+            current_app.logger.error(f'An error has occured while adding account {username} to database: {e}.', {'log_type': 'database'})
             return (False, e)
 
 def add_file_to_database(public_filename:str, internal_filename:str, uploader_UUID:str):
