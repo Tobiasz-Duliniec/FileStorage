@@ -2,7 +2,6 @@
 HTML forms definitions
 '''
 
-from bs4 import BeautifulSoup
 from flask import current_app
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired
