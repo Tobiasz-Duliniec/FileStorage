@@ -14,6 +14,7 @@ import shutil
 def create_app():
     app = Flask(__name__, static_folder=None)
     
+    
     logging.getLogger('werkzeug').disabled = True
     logging.config.dictConfig({
         'version': 1,
@@ -50,16 +51,19 @@ def create_app():
         }
     })
     
+    
+    app.logger.info('Starting website.')
+    app.jinja_env.lstrip_blocks = True
+    app.jinja_env.trim_blocks = True
+    
+    
+    if(not os.path.isdir('instance')):
+        app.logger.info('Instance folder not found. Creating.')
+        os.mkdir('instance')
+        shutil.copy(os.path.join('configurable_data.json'), os.path.join('instance', 'configurable_data.json'))
+    
+    
     with app.app_context():
-        app.logger.info('Starting website.')
-        app.jinja_env.lstrip_blocks = True
-        app.jinja_env.trim_blocks = True
-        
-        if(not os.path.isdir('instance')):
-            app.logger.info('Instance folder not found. Creating.')
-            os.mkdir('instance')
-            shutil.copy(os.path.join('configurable_data.json'), os.path.join('instance', 'configurable_data.json'))
-        
         config_funcs.set_configurable_data()
         from routes import router
         from funcs.context_processor import context_processor_funcs_blueprint
