@@ -2,3 +2,4 @@ FileStorage/instance/
 FileStorage/files/
 FileStorage/logs.*
 FileStorage/__pycache__
+FileStorage/*/__pycache__
