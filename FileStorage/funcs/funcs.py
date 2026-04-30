@@ -8,7 +8,6 @@ import funcs.database as database_funcs
 import json
 import logging
 import os
-import sqlite3
 import uuid
 import werkzeug
 
