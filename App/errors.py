@@ -3,9 +3,16 @@ File for custom error pages.
 '''
 
 from flask import Blueprint, current_app, flash, render_template
+from flask_wtf.csrf import CSRFError
 
 
 Errors = Blueprint('error', __name__)
+
+@Errors.app_errorhandler(CSRFError)
+def handle_csrf_error(e):
+    flash(e.description)
+    print('error')
+    return render_template('error.html'), 400
 
 @Errors.app_errorhandler(500)
 def internal_server_error(e):
@@ -32,3 +39,8 @@ def page_not_found(e):
 def unauthorized(e):
     flash('Unauthorized: you need to log in to view this page.')
     return render_template('error.html'), 401
+
+@Errors.app_errorhandler(400)
+def bad_request(e):
+    flash('Bad Request: client sent a bad request.')
+    return render_template('error.html'), 400

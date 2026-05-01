@@ -11,7 +11,11 @@ class ConsoleFormatter(logging.Formatter):
             record.url = request.url
             record.status_code = request.status_code if hasattr(request, 'status_code') else None
             record.user_agent = request.user_agent
-            record.log_type = 'An exception has occured' if record.levelno >= 40 else record.args.get('log_type', None) 
+            record.log_type = (
+                'An exception has occured' if record.levelno >= 40
+                else record.args.get('log_type', None) if isinstance(record.args, dict)
+                else None
+            )
         else:
             record.ip = None
             record.username = None
@@ -32,7 +36,11 @@ class JSONLinesFormatter(logging.Formatter):
             record.url = request.url
             record.status_code = request.status_code if hasattr(request, 'status_code') else None
             record.user_agent = request.user_agent
-            record.log_type = 'An exception has occured' if record.levelno >= 40 else record.args.get('log_type', None)
+            record.log_type = (
+                'An exception has occured' if record.levelno >= 40
+                else record.args.get('log_type', None) if isinstance(record.args, dict)
+                else None
+            )
         else:
             record.ip = None
             record.username = None

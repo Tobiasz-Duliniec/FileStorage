@@ -89,7 +89,6 @@ def save_file(file:werkzeug.datastructures.file_storage.FileStorage, username:st
         return (False, 'Invalid filename: filename contains illegal characters or is too long.')
     is_filename_taken = database_funcs.test_for_public_filename(filename, username)
     if(is_filename_taken):
-        cur.close()
         current_app.logger.info(f'{username} tried saving file with an existing filename: {filename}', {'log_type': 'file save'})
         return (False, "Couldn't save the file: file with such name already exists.")
     uploader_UUID = database_funcs.get_UUID_by_username(username)

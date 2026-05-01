@@ -15,7 +15,7 @@ router = Blueprint('router', __name__)
 def http_request_logger(response):
     request.status_code = response.status_code
     request.user_agent = request.headers.get('User-Agent')
-    current_app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
+    current_app.logger.info('A HTTP request came.', {'log_type': 'HTTP request'})
     return response
 
 @router.route('/favicon.ico')
@@ -50,8 +50,12 @@ def unshare_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    status = funcs.unshare_file(file, username)
-    flash(status[1], 'success' if status[0] else 'error')
+    file_unshare_form = forms.FileUnshareForm()
+    if(file_unshare_form.validate_on_submit()):
+        status = funcs.unshare_file(file, username)
+        flash(status[1], 'success' if status[0] else 'error')
+    else:
+        abort(404)
     return redirect(url_for('router.show_file_info', file = file))
 
 @router.route('/account', methods = ['GET', 'POST'])
@@ -60,7 +64,7 @@ def account_info():
         abort(401)
     username = session.get('username')
     password_reset_form = forms.PasswordResetForm()
-    if(password_reset_form.is_submitted()):
+    if(password_reset_form.validate_on_submit()):
         current_password = password_reset_form.current_password.data
         new_password = password_reset_form.new_password.data
         new_password_confirmation = password_reset_form.confirm_password.data
@@ -73,9 +77,12 @@ def delete_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    if(request.method == 'POST'):
+    file_delete_form = forms.FileDeleteForm()
+    if(file_delete_form.validate_on_submit()):
         status = funcs.delete_file(file, username)
         flash(status[1], 'success' if status[0] else 'error')
+    else:
+        abort(404)
     return redirect(url_for('router.download_file_page'))
 
 @router.route('/share/<file>', methods = ['POST'])
@@ -83,8 +90,12 @@ def share_file(file):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
-    status = funcs.share_file(file, username)
-    flash(status[1], 'success' if status[0] else 'error')
+    file_share_form = forms.FileShareForm()
+    if(file_share_form.validate_on_submit()):
+        status = funcs.share_file(file, username)
+        flash(status[1], 'success' if status[0] else 'error')
+    else:
+        abort(400)
     return redirect(url_for('router.show_file_info', file = file))
 
 @router.route('/download/<file>', methods = ['POST'])
