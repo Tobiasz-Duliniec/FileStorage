@@ -1,5 +1,5 @@
-FileStorage/instance/
-FileStorage/files/
-FileStorage/logs.*
-FileStorage/__pycache__
-FileStorage/*/__pycache__
+App/instance/
+App/files/
+App/logs.*
+App/__pycache__
+App/*/__pycache__
