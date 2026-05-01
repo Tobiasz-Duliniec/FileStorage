@@ -5,4 +5,4 @@ You can use it on your local network to share files between your devices more ea
 # How to run
 1. Download the source code
 2. Open the command line, change directory into FileStorage's directory and install the required libraries with `pip install -r requirements.txt`
-3. Change directory in the command line to /App subdirectory of the application and run in with `flask run`
+3. Change directory in the command line to /App subdirectory of the application and run it with `flask run`
