@@ -1,0 +1,7 @@
+{% with messages = get_flashed_messages(with_categories = True, category_filter = ['success', 'error']) %}
+	{% if messages|length > 0 %}
+		<div id="site_{{messages[0][0]}}">
+			<p id="{{messages[0][0]}}">{{messages[0][1]}}</p>
+		</div>
+	{% endif %}
+{% endwith %}
