@@ -3,16 +3,9 @@ File for custom error pages.
 '''
 
 from flask import Blueprint, current_app, flash, render_template
-from flask_wtf.csrf import CSRFError
 
 
 Errors = Blueprint('error', __name__)
-
-@Errors.app_errorhandler(CSRFError)
-def handle_csrf_error(e):
-    flash(e.description)
-    print('error')
-    return render_template('error.html'), 400
 
 @Errors.app_errorhandler(500)
 def internal_server_error(e):

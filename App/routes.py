@@ -15,7 +15,7 @@ router = Blueprint('router', __name__)
 def http_request_logger(response):
     request.status_code = response.status_code
     request.user_agent = request.headers.get('User-Agent')
-    current_app.logger.info('A HTTP request came.', {'log_type': 'HTTP request'})
+    current_app.logger.info('A HTTP finished processing.', {'log_type': 'HTTP request'})
     return response
 
 @router.route('/favicon.ico')
