@@ -3,8 +3,9 @@ Cryptography functions
 '''
 
 from flask import current_app
+from . import database as database_funcs
 import argon2
-import funcs.database as database_funcs
+#import funcs.database as database_funcs
 import secrets
 
 

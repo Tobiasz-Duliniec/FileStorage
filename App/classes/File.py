@@ -1,4 +1,6 @@
-import funcs.funcs as funcs
+from flask import current_app
+#import funcs.funcs as funcs
+from ..funcs import functions as funcs
 import os
 
 
@@ -12,4 +14,4 @@ class File:
         self.file_size = self.__read_file_size()
     
     def __read_file_size(self):
-        return funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', self.owner_uuid, self.internal_filename)))
+        return funcs.convert_bytes_to_megabytes(os.path.getsize(os.path.join(current_app.root_path, 'files', self.owner_uuid, self.internal_filename)))

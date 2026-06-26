@@ -2,14 +2,15 @@
 Database querying functions
 '''
 
-from classes.File import File
+#from classes.File import File
+from ..classes.File import File
 from flask import current_app
 import os
 import sqlite3
 
 
 def add_account_to_database(username:str, password_hash:str, user_UUID:str, permissions:str) -> tuple[bool, str]:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         try:
             cur.execute('INSERT INTO users(username, password, UUID, permissions) VALUES (?, ?, ?, ?)', (username, password_hash, user_UUID, permissions))
@@ -23,21 +24,21 @@ def add_account_to_database(username:str, password_hash:str, user_UUID:str, perm
             return (False, e)
 
 def add_file_to_database(public_filename:str, internal_filename:str, uploader_UUID:str):
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         cur.execute('INSERT INTO files (publicFilename, internalFilename, UUID) VALUES (?, ?, ?);', (public_filename, internal_filename, uploader_UUID))
         cur.close()
         conn.commit()
 
 def add_share_to_database(internal_filename:str, share_url:str):
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(current_app.root_path, os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         cur.execute('INSERT INTO fileShares VALUES (?, ?)', (internal_filename, share_url))
         cur.close()
         conn.commit()
 
 def change_database_password(username:str, new_password:str) -> None:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         cur.execute('''UPDATE users
                         SET password = ?
@@ -48,7 +49,7 @@ def change_database_password(username:str, new_password:str) -> None:
         conn.commit()
 
 def create_initial_database_tables(admin_UUID:str, password:str) -> None:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn: 
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn: 
         cur = conn.cursor()
         cur.execute('''CREATE TABLE users (UUID TEXT PRIMARY KEY,
                                                                 username TEXT NOT NULL UNIQUE,
@@ -67,7 +68,7 @@ def create_initial_database_tables(admin_UUID:str, password:str) -> None:
         cur.close()
 
 def delete_file_from_database(public_filename:str, user_UUID:str) -> bool:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         cur.execute('PRAGMA foreign_keys = ON;')
         cur.execute('DELETE FROM files WHERE publicFilename=? AND UUID=?', (public_filename, user_UUID))
@@ -75,14 +76,14 @@ def delete_file_from_database(public_filename:str, user_UUID:str) -> bool:
     cur.close()
 
 def delete_share(share_url:str):
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         cur.execute('DELETE FROM fileShares WHERE shareURL = ?', (share_url, ))
         conn.commit()
         cur.close()
 
 def get_database_password(username:str) -> str:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         password = cur.execute('''SELECT password
                                             FROM users
@@ -93,7 +94,7 @@ def get_database_password(username:str) -> str:
     return password
 
 def get_file_count_by_user(username:str) -> int:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         number_of_all_files = conn.execute('''SELECT count(*)
                                         FROM files
@@ -103,7 +104,7 @@ def get_file_count_by_user(username:str) -> int:
     return number_of_all_files
 
 def get_file_data_by_share_url(share_url:str) -> File|None:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         file = cur.execute('''SELECT publicFilename, files.internalFilename, users.UUID, username, shareURL
                                             FROM fileShares
@@ -120,7 +121,7 @@ def get_file_data_by_share_url(share_url:str) -> File|None:
     return file
 
 def get_file_data_by_filename(public_filename:str, username:str) -> File|None:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         file = cur.execute('''SELECT publicFilename, files.internalfilename, users.UUID, username, shareURL
                                             FROM users
@@ -138,7 +139,7 @@ def get_file_data_by_filename(public_filename:str, username:str) -> File|None:
     return file
 
 def get_file_list(username:str, limit:int, offset:int) -> list:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path,'instance', 'users.db')) as conn:
         cur = conn.cursor()
         file_list = cur.execute('''SELECT publicFilename, internalFilename
                                             FROM files INNER JOIN users ON files.UUID=users.UUID
@@ -148,7 +149,7 @@ def get_file_list(username:str, limit:int, offset:int) -> list:
     return file_list
         
 def get_internal_filename_by_username(public_filename:str, username:str) -> str:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         internal_filename = cur.execute('''SELECT internalFilename
                                         FROM files INNER JOIN users ON files.UUID = users.UUID
@@ -157,14 +158,14 @@ def get_internal_filename_by_username(public_filename:str, username:str) -> str:
     return internal_filename
 
 def get_internal_filename_by_uuid(public_filename:str, user_UUID:str) -> str:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         internal_filename = cur.execute('SELECT internalFilename FROM files WHERE publicFilename=? AND UUID=? LIMIT 1', (public_filename, user_UUID)).fetchone()[0]
         cur.close()
     return internal_filename
 
 def get_share_url(public_filename:str, username:str) -> list:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path,'instance', 'users.db')) as conn:
         cur = conn.cursor()
         share_url = cur.execute('''SELECT shareURL
                                     FROM files INNER JOIN users INNER JOIN fileShares ON files.internalFilename=fileShares.internalFilename
@@ -173,7 +174,7 @@ def get_share_url(public_filename:str, username:str) -> list:
     return share_url
 
 def get_user_permissions(username:str) -> str:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         permissions = cur.execute('''SELECT permissions
                             FROM users
@@ -183,14 +184,14 @@ def get_user_permissions(username:str) -> str:
     return permissions
 
 def get_UUID_by_username(username:str) -> str:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         user_UUID = cur.execute('SELECT UUID FROM users WHERE username=? LIMIT 1', (username, )).fetchone()[0]
         cur.close()
     return user_UUID
 
 def test_for_public_filename(public_filename:str, username:str) -> bool:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         no_of_files = cur.execute('''SELECT COUNT(*)
                                     FROM files INNER JOIN users ON users.UUID=files.UUID
@@ -200,7 +201,7 @@ def test_for_public_filename(public_filename:str, username:str) -> bool:
     return no_of_files > 0
 
 def test_for_shared_file(public_filename:str, username:str) -> bool:
-    with sqlite3.connect(os.path.join('instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         is_file_shared = bool(
             cur.execute('''select count(*) from fileShares

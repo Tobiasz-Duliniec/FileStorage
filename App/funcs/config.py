@@ -1,13 +1,14 @@
 from flask import current_app
-from classes.ConfigData import ConfigData
-import funcs.cryptography as crypto_funcs
+from ..classes.ConfigData import ConfigData
+from . import cryptography as crypto_funcs
+#import funcs.cryptography as crypto_funcs
 import json
 import os
 
 
 def read_configurable_data_file() -> list[ConfigData]:
     config_data = []
-    with open(os.path.join('instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as json_file:
+    with open(os.path.join(current_app.root_path, 'instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as json_file:
         raw_config_data = json.load(json_file)
     for element in raw_config_data['configs']:
         config_name = element['name']
@@ -29,7 +30,7 @@ def get_configurable_data_values(stringify=False) -> dict:
     Optional parameters stringify turns lists into strings with ''.join()
     '''
     config_data = {}
-    with open(os.path.join('instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
+    with open(os.path.join(current_app.root_path, 'instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
         raw_config_data = json.load(file)
     for element in raw_config_data['configs']:
         config_name = element['name']
@@ -41,19 +42,19 @@ def get_configurable_data_values(stringify=False) -> dict:
     return config_data
 
 def save_configurable_data(configs:dict) -> None:
-    with open(os.path.join('instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
+    with open(os.path.join(current_app.root_path, 'instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
         raw_config_data = json.load(file)
     for element in raw_config_data['configs']:
         config_name = element['name']
         element['value'] = configs[config_name]
-    with open(os.path.join('instance', 'configurable_data.json'), 'wt', encoding='utf-8') as file:
+    with open(os.path.join(current_app.root_path, 'instance', 'configurable_data.json'), 'wt', encoding='utf-8') as file:
         json.dump(raw_config_data, file, indent = 1)
 
 def set_configurable_data() -> None:
     '''
     Loads data from config file if it exists.
     '''
-    with open(os.path.join('instance', 'configurable_data.json')) as file:
+    with open(os.path.join(current_app.root_path, 'instance', 'configurable_data.json')) as file:
         raw_config_data = json.load(file)
     new_config_data = {}
     update_file = False
@@ -93,7 +94,7 @@ def validate_new_configurable_data(to_check) -> dict:
         'list': list
     }
     converted_data = {}
-    with open(os.path.join('instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
+    with open(os.path.join(current_app.root_path, 'instance', 'configurable_data.json'), 'rt', encoding = 'UTF-8') as file:
         raw_json_file = json.load(file)
     for element in raw_json_file['configs']:
         config_name = element['name']

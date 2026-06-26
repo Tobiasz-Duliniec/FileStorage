@@ -1,9 +1,14 @@
 from flask import Blueprint, abort, current_app, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
-import classes.forms as forms
-import funcs.admin as admin_funcs
-import funcs.config as config_funcs
-import funcs.database as database_funcs
-import funcs.funcs as funcs
+#import classes.forms as forms
+#import funcs.admin as admin_funcs
+#import funcs.config as config_funcs
+#import funcs.database as database_funcs
+#import funcs.funcs as funcs
+from .classes import forms
+from .funcs import admin as admin_funcs
+from .funcs import config as config_funcs
+from .funcs import database as database_funcs
+from .funcs import functions as funcs
 import json
 import os
 import uuid
@@ -112,7 +117,7 @@ def send_file(file:str):
             file = database_funcs.get_file_data_by_share_url(file)
         if(file is not None and os.path.isfile(os.path.join('files', file.owner_uuid, file.internal_filename))):
             current_app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
-            return send_from_directory(os.path.join('files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
+            return send_from_directory(os.path.join(current_app.root_path, 'files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
         else:
             abort(404)
     else:

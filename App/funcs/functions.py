@@ -3,8 +3,10 @@ Various functions
 '''
 
 from flask import current_app, request
-import funcs.cryptography as crypto_funcs
-import funcs.database as database_funcs
+#import funcs.cryptography as crypto_funcs
+#import funcs.database as database_funcs
+from . import cryptography as crypto_funcs
+from . import database as database_funcs
 import json
 import os
 import uuid
@@ -32,7 +34,7 @@ def change_password(new_password:str | None, new_password_confirmation:str | Non
 
 def check_database() -> None:
     current_app.logger.info('Checking database.')
-    if(not os.path.isfile(os.path.join('instance', 'users.db'))):
+    if(not os.path.isfile(os.path.join(current_app.root_path, 'instance', 'users.db'))):
         create_users_database()
     else:
         current_app.logger.info('Database found.')
@@ -47,7 +49,7 @@ def create_users_database() -> None:
     admin_UUID = str(uuid.uuid4())
     password = crypto_funcs.hash_password('admin')
     database_funcs.create_initial_database_tables(admin_UUID, password)
-    admin_file_folder = os.path.join('files', admin_UUID)
+    admin_file_folder = os.path.join(current_app.root_path, 'files', admin_UUID)
     if(not os.path.isdir(admin_file_folder)):
         os.makedirs(admin_file_folder)
     current_app.logger.info('Users database created.')
@@ -56,7 +58,8 @@ def delete_file(public_filename:str, username:str) -> tuple[bool, str]:
     user_UUID = database_funcs.get_UUID_by_username(username)
     internal_filename = database_funcs.get_internal_filename_by_uuid(public_filename, user_UUID)
     database_funcs.delete_file_from_database(public_filename, user_UUID)
-    os.remove(f'files/{user_UUID}/{internal_filename}')
+    os.remove(os.path.join(current_app.root_path, 'files', user_UUID, internal_filename))
+    #os.remove(f'files/{user_UUID}/{internal_filename}')
     current_app.logger.info(f'{username} has deleted a file: {public_filename}', {'log_type': 'file deletion'})
     return (True, 'File deleted successfully.')
 
@@ -64,7 +67,7 @@ def get_file_list(username:str, file_start:int) -> dict:
     user_UUID = database_funcs.get_UUID_by_username(username)
     file_list = database_funcs.get_file_list(username, current_app.config['MAX_FILES_PER_PAGE'], file_start)
     file_list = dict(
-        (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join('files', user_UUID, file[1]))))
+        (file[0], convert_bytes_to_megabytes(os.path.getsize(os.path.join(current_app.root_path, 'files', user_UUID, file[1]))))
                     for file in file_list
         )
     return file_list
@@ -94,7 +97,7 @@ def save_file(file:werkzeug.datastructures.file_storage.FileStorage, username:st
     uploader_UUID = database_funcs.get_UUID_by_username(username)
     internal_filename = str(uuid.uuid4())
     database_funcs.add_file_to_database(filename, internal_filename, uploader_UUID)
-    file.save(os.path.join('files', uploader_UUID, internal_filename))
+    file.save(os.path.join(current_app.root_path, 'files', uploader_UUID, internal_filename))
     current_app.logger.info(f'{username} has saved a new file on the server: {filename}', {'log_type': 'file save'})
     return (True, 'File has been saved on the server.')
 

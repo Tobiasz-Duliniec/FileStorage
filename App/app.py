@@ -3,9 +3,9 @@ Main file for the website.
 '''
 
 from flask import Flask
-import classes.log_formatters
-import funcs.config as config_funcs
-import funcs.funcs as funcs
+from .classes import log_formatters
+from .funcs import config as config_funcs
+from .funcs import functions as funcs
 import logging.config
 import os
 import shutil
@@ -14,19 +14,18 @@ import shutil
 def create_app():
     app = Flask(__name__, static_folder=None)
     
-    
     logging.getLogger('werkzeug').disabled = True
     logging.config.dictConfig({
         'version': 1,
         'formatters': {
             'default': {
-                '()': 'classes.log_formatters.ConsoleFormatter',
+                '()': 'App.classes.log_formatters.ConsoleFormatter',
                 'format': '%(levelname)s | Time: %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s ' \
                 '| User agent: %(user_agent)s | Log type: %(log_type)s | Message: %(message)s',
                 'datefmt': '%Y-%d-%m %H:%M:%S'
             },
             'JSON_Lines': {
-                '()': 'classes.log_formatters.JSONLinesFormatter',
+                '()': 'App.classes.log_formatters.JSONLinesFormatter',
                 'datefmt': '"%Y-%m-%d %H:%M:%S"'
             }
         },
@@ -57,19 +56,21 @@ def create_app():
     app.jinja_env.trim_blocks = True
     
     
-    if(not os.path.isdir('instance')):
+    if(not os.path.isdir(os.path.join(app.root_path, 'instance'))):
         app.logger.info('Instance folder not found. Creating.')
         os.mkdir('instance')
-        shutil.copy(os.path.join('configurable_data.json'), os.path.join('instance', 'configurable_data.json'))
+        shutil.copy(os.path.join(app.root_path, 'configurable_data.json'), os.path.join(app.root_path, 'instance', 'configurable_data.json'))
     
     
     with app.app_context():
         config_funcs.set_configurable_data()
-        from routes import router
-        from funcs.context_processor import context_processor_funcs_blueprint
-        from errors import Errors
+        from .routes import router
+        from .funcs.context_processor import context_processor_funcs_blueprint
+        from .errors import Errors
         app.register_blueprint(router)
         app.register_blueprint(context_processor_funcs_blueprint)
         app.register_blueprint(Errors)
         funcs.check_database()
+    
+    app.logger.info('Start up script finished.')
     return app
