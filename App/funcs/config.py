@@ -1,7 +1,6 @@
 from flask import current_app
 from ..classes.ConfigData import ConfigData
 from . import cryptography as crypto_funcs
-#import funcs.cryptography as crypto_funcs
 import json
 import os
 

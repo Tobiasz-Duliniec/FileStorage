@@ -1,5 +1,4 @@
 from flask import Blueprint, session
-#import funcs.admin as admin_funcs 
 from . import admin as admin_funcs
 
 

@@ -2,7 +2,6 @@
 Database querying functions
 '''
 
-#from classes.File import File
 from ..classes.File import File
 from flask import current_app
 import os
@@ -31,7 +30,7 @@ def add_file_to_database(public_filename:str, internal_filename:str, uploader_UU
         conn.commit()
 
 def add_share_to_database(internal_filename:str, share_url:str):
-    with sqlite3.connect(current_app.root_path, os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
+    with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
         cur = conn.cursor()
         cur.execute('INSERT INTO fileShares VALUES (?, ?)', (internal_filename, share_url))
         cur.close()

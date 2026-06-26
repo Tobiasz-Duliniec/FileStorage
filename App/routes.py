@@ -1,9 +1,4 @@
 from flask import Blueprint, abort, current_app, flash, has_request_context, redirect, render_template, Response, request, send_from_directory, session, url_for
-#import classes.forms as forms
-#import funcs.admin as admin_funcs
-#import funcs.config as config_funcs
-#import funcs.database as database_funcs
-#import funcs.funcs as funcs
 from .classes import forms
 from .funcs import admin as admin_funcs
 from .funcs import config as config_funcs

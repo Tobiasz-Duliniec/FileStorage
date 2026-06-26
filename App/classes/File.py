@@ -1,5 +1,4 @@
 from flask import current_app
-#import funcs.funcs as funcs
 from ..funcs import functions as funcs
 import os
 

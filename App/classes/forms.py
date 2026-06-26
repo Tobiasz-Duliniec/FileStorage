@@ -8,7 +8,6 @@ from flask_wtf.file import FileField, FileRequired
 from wtforms import BooleanField, HiddenField, IntegerField, PasswordField, SelectField, StringField, SubmitField
 from wtforms.validators import InputRequired
 from ..funcs import config as config_funcs
-#import funcs.config as config_funcs
 
 
 class AdminPanelAccountCreateForm(FlaskForm):
