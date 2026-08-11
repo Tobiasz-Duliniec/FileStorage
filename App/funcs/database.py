@@ -72,7 +72,7 @@ def delete_file_from_database(public_filename:str, user_UUID:str) -> bool:
         cur.execute('PRAGMA foreign_keys = ON;')
         cur.execute('DELETE FROM files WHERE publicFilename=? AND UUID=?', (public_filename, user_UUID))
         conn.commit()
-    cur.close()
+        cur.close()
 
 def delete_share(share_url:str):
     with sqlite3.connect(os.path.join(current_app.root_path, 'instance', 'users.db')) as conn:
