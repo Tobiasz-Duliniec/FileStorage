@@ -17,7 +17,7 @@ def convert_bytes_to_megabytes(size:int) -> float:
 def change_password(new_password:str | None, new_password_confirmation:str | None, current_password:str | None, username:str) -> tuple[bool, str]:
     if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
         new_password = crypto_funcs.hash_password(new_password)
-        current_password = current_password
+        #current_password = current_password
         current_password_correct = validate_login_data(username, current_password)
         if(current_password_correct):
             database_funcs.change_database_password(username, new_password)

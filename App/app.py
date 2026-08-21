@@ -73,5 +73,4 @@ def create_app():
         funcs.check_database()
     
     app.logger.info('Start up script finished.')
-    app.logger.info(os.listdir())
     return app
