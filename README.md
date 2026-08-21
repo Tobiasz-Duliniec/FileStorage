@@ -1,5 +1,5 @@
 # FileStorage
-A simple file storage website made in Flask
+A simple file storage web application made in Flask
 
 ## How to run
 1. Download the source code
