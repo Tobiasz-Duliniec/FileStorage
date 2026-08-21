@@ -17,7 +17,6 @@ def convert_bytes_to_megabytes(size:int) -> float:
 def change_password(new_password:str | None, new_password_confirmation:str | None, current_password:str | None, username:str) -> tuple[bool, str]:
     if(current_password is not None and new_password is not None and new_password_confirmation is not None and new_password == new_password_confirmation):
         new_password = crypto_funcs.hash_password(new_password)
-        #current_password = current_password
         current_password_correct = validate_login_data(username, current_password)
         if(current_password_correct):
             database_funcs.change_database_password(username, new_password)
@@ -57,7 +56,6 @@ def delete_file(public_filename:str, username:str) -> tuple[bool, str]:
     internal_filename = database_funcs.get_internal_filename_by_uuid(public_filename, user_UUID)
     database_funcs.delete_file_from_database(public_filename, user_UUID)
     os.remove(os.path.join(current_app.root_path, 'files', user_UUID, internal_filename))
-    #os.remove(f'files/{user_UUID}/{internal_filename}')
     current_app.logger.info(f'{username} has deleted a file: {public_filename}', {'log_type': 'file deletion'})
     return (True, 'File deleted successfully.')
 
