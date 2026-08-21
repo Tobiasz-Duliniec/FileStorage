@@ -1,0 +1,9 @@
+services:
+  backend:
+    build:
+      dockerfile: Dockerfile
+    container_name: filestorage
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./App/instance:/instance
