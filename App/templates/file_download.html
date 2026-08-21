@@ -16,11 +16,13 @@
 			<table class="download_table">
 				<tr>
 					<th>file name</th>
+					<th>upload data</th>
 					<th>file size (megabytes)</th>
 				</tr>
 				{% for file in files %}
 				<tr>
 					<td class="file_name"><a href="/files/{{file}}">{{file}}</a></td>
+					<td class="upload_date"></td>
 					<td class="file_size">{{files[file]}}</td>
 				</tr>
 				{% endfor %}

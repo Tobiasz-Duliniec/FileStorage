@@ -1,5 +1,5 @@
 from flask import Blueprint, session
-from . import admin as admin_funcs
+import funcs.admin as admin_funcs
 
 
 context_processor_funcs_blueprint = Blueprint('context_processor', __name__)

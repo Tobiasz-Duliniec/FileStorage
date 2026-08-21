@@ -9,6 +9,7 @@
 			<p>File name: {{file.public_filename}}</p>
 			<p>File size: {{file.file_size}} (megabytes)</p>
 			<p>Shared by: {{file.owner_username}}</p>
+			<p>Shared at: {{file.share_date}}</p>
 			<form action="/shared_file_download/{{file.public_filename}}" method="post">
 				{{file_download_form.csrf_token}}
 				{{file_download_form.action()}}

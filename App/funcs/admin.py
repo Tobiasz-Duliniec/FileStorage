@@ -3,10 +3,10 @@ File for admin panel stuff.
 '''
 
 from flask import current_app
-from . import config as config_funcs
-from . import cryptography as crypto_funcs
-from . import database as database_funcs
-from . import functions as funcs
+import funcs.config as config_funcs
+import funcs.cryptography as crypto_funcs
+import funcs.database as database_funcs
+import funcs.functions as funcs
 import os
 import uuid
 

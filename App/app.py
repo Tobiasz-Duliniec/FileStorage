@@ -3,9 +3,9 @@ Main file for the website.
 '''
 
 from flask import Flask
-from .classes import log_formatters
-from .funcs import config as config_funcs
-from .funcs import functions as funcs
+import classes.log_formatters
+import funcs.config as config_funcs
+import funcs.functions as funcs
 import logging.config
 import os
 import shutil
@@ -19,13 +19,13 @@ def create_app():
         'version': 1,
         'formatters': {
             'default': {
-                '()': 'App.classes.log_formatters.ConsoleFormatter',
+                '()': 'classes.log_formatters.ConsoleFormatter',
                 'format': '%(levelname)s | Time: %(asctime)s | IP: %(ip)s | Username: %(username)s | Method: %(method)s | URL: %(url)s | Status code: %(status_code)s ' \
                 '| User agent: %(user_agent)s | Log type: %(log_type)s | Message: %(message)s',
                 'datefmt': '%Y-%d-%m %H:%M:%S'
             },
             'JSON_Lines': {
-                '()': 'App.classes.log_formatters.JSONLinesFormatter',
+                '()': 'classes.log_formatters.JSONLinesFormatter',
                 'datefmt': '"%Y-%m-%d %H:%M:%S"'
             }
         },
@@ -64,13 +64,14 @@ def create_app():
     
     with app.app_context():
         config_funcs.set_configurable_data()
-        from .routes import router
-        from .funcs.context_processor import context_processor_funcs_blueprint
-        from .errors import Errors
+        from routes import router
+        from funcs.context_processor import context_processor_funcs_blueprint
+        from errors import Errors
         app.register_blueprint(router)
         app.register_blueprint(context_processor_funcs_blueprint)
         app.register_blueprint(Errors)
         funcs.check_database()
     
     app.logger.info('Start up script finished.')
+    app.logger.info(os.listdir())
     return app

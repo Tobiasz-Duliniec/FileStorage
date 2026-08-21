@@ -2,7 +2,7 @@
 Database querying functions
 '''
 
-from ..classes.File import File
+from classes.File import File
 from flask import current_app
 import os
 import sqlite3
@@ -58,10 +58,12 @@ def create_initial_database_tables(admin_UUID:str, password:str) -> None:
         cur.execute('''CREATE TABLE files (internalFilename TEXT PRIMARY KEY,
                                                                 publicFilename TEXT NOT NULL,
                                                                 UUID TEXT NOT NULL,
+                                                                uploadData TEXT NOT NULL,
                                                                 FOREIGN KEY(UUID) REFERENCES users(UUID));
                                                                 ''')
         cur.execute('''CREATE TABLE fileShares (internalFilename TEXT PRIMARY KEY,
                                                                 shareURL TEXT UNIQUE,
+                                                                shareDate TEXT NOT NULL,
                                                                 FOREIGN KEY(internalFilename) REFERENCES files(internalFilename) ON DELETE CASCADE);''')
         conn.commit()
         cur.close()

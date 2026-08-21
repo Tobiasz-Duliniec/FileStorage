@@ -3,8 +3,8 @@ Various functions
 '''
 
 from flask import current_app, request
-from . import cryptography as crypto_funcs
-from . import database as database_funcs
+import funcs.cryptography as crypto_funcs
+import funcs.database as database_funcs
 import json
 import os
 import uuid
