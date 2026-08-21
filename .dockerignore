@@ -1,0 +1,4 @@
+.git
+App/__pycache__
+App/instance
+App/logs.jsonl
