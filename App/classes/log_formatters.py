@@ -58,7 +58,7 @@ class JSONLinesFormatter(logging.Formatter):
             "method": record.method,
             "url": record.url,
             "status_code": record.status_code,
-            "user_agent": str(record.user_agent),
+            "user_agent": str(record.user_agent) if record.user_agent is not None else None,
             "log_type": record.log_type,
             "message": record.getMessage(),
             "exc_info": self.formatException(record.exc_info) if record.exc_info is not None else None

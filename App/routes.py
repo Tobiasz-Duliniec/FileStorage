@@ -86,7 +86,7 @@ def delete_file(file:str):
     return redirect(url_for('router.download_file_page'))
 
 @router.route('/share/<file>', methods = ['POST'])
-def share_file(file):
+def share_file(file:str):
     if(not session.get('username')):
         abort(401)
     username = session.get('username')
