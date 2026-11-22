@@ -19,7 +19,7 @@ def create_account(username:str, password:str, permissions:str) -> tuple[bool, s
     user_UUID = str(uuid.uuid4())
     status = database_funcs.add_account_to_database(username, password, user_UUID, permissions)
     if(status[0]):
-        os.makedirs(os.path.join('files', user_UUID))
+        os.makedirs(os.path.join('instance', 'files', user_UUID))
         current_app.logger.info(f'New account has been created: {username}', {'log_type': 'account'})
         return (True, 'New account created.')
     current_app.logger.error(f'Account creation failed: {status[1]}.', {'log_type': 'account'})

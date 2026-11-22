@@ -14,6 +14,15 @@ import shutil
 def create_app():
     app = Flask(__name__, static_folder=None)
     
+    if(not os.path.isdir(os.path.join(app.root_path, 'instance'))):
+        os.mkdir('instance')
+    if(not os.path.isdir(os.path.join(app.root_path, 'instance', 'logs'))):
+        os.mkdir(os.path.join(app.root_path, 'instance', 'logs'))
+    if(not os.path.isdir(os.path.join(app.root_path, 'instance', 'files'))):
+        os.mkdir(os.path.join(app.root_path, 'instance', 'files'))
+    if(not os.path.isfile(os.path.join(app.root_path, 'instance', 'configurable_data.json'))):
+        shutil.copy(os.path.join(app.root_path, 'configurable_data.json'), os.path.join(app.root_path, 'instance', 'configurable_data.json'))
+    
     logging.getLogger('werkzeug').disabled = True
     logging.config.dictConfig({
         'version': 1,
@@ -38,7 +47,7 @@ def create_app():
             'JSON_Lines_file': {
                 'class': 'logging.handlers.RotatingFileHandler',
                 'formatter': 'JSON_Lines',
-                'filename': 'logs.jsonl',
+                'filename': 'instance/logs/logs.jsonl',
                 'encoding': 'UTF-8',
                 'maxBytes': 10 * 1024 * 1024 * 1024,
                 'backupCount': 10
@@ -51,15 +60,9 @@ def create_app():
     })
     
     
-    app.logger.info('Starting website.')
+    app.logger.info('FileStorage is being launched...')
     app.jinja_env.lstrip_blocks = True
     app.jinja_env.trim_blocks = True
-    
-    
-    if(not os.path.isdir(os.path.join(app.root_path, 'instance'))):
-        app.logger.info('Instance folder not found. Creating.')
-        os.mkdir('instance')
-        shutil.copy(os.path.join(app.root_path, 'configurable_data.json'), os.path.join(app.root_path, 'instance', 'configurable_data.json'))
     
     
     with app.app_context():

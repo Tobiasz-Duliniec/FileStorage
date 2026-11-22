@@ -110,9 +110,9 @@ def send_file(file:str):
             file = database_funcs.get_file_data_by_filename(file, username)
         else:
             file = database_funcs.get_file_data_by_share_url(file)
-        if(file is not None and os.path.isfile(os.path.join('files', file.owner_uuid, file.internal_filename))):
+        if(file is not None and os.path.isfile(os.path.join('instance', 'files', file.owner_uuid, file.internal_filename))):
             current_app.logger.info(f'{username} downloaded a file: {file.public_filename}', {'log_type': 'file download'})
-            return send_from_directory(os.path.join(current_app.root_path, 'files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
+            return send_from_directory(os.path.join(current_app.root_path, 'instance', 'files', file.owner_uuid), file.internal_filename, download_name = file.public_filename, as_attachment = True)
         else:
             abort(404)
     else:
