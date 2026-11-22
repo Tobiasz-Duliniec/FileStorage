@@ -1,5 +1,4 @@
 App/instance/
-App/files/
 App/logs.*
 App/__pycache__
 App/*/__pycache__
